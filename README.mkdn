@@ -3,6 +3,13 @@ Radix Hash Join
 
 This project is a side project approved by google IARC.
 
+DEPENDENCIES
+------------
+
+* C++14
+* google-benchmark
+* papi
+
 LICENSE
 -------
 
