@@ -19,7 +19,7 @@
 
 #include<benchmark/benchmark.h>
 
-static void BM_Example(benchmark::State& state) {
+static void BM_UniquePtr(benchmark::State& state) {
   using namespace std;
   for (auto _ : state)
     {
@@ -28,27 +28,13 @@ static void BM_Example(benchmark::State& state) {
     }
 }
 
-static void BM_Alloc(benchmark::State& state) {
+static void BM_MallocOnly(benchmark::State& state) {
   for (auto _ : state)
     {
       char* x;
       benchmark::DoNotOptimize(x = (char*)malloc(state.range(0)));
       benchmark::DoNotOptimize(x[0] = 'a');
       free(x);
-    }
-}
-
-struct my_pair {
-  std::string str;
-  uint64_t val;
-};
-
-static void BM_Struct(benchmark::State& state) {
-  for (auto _ : state)
-    {
-      auto arr = std::make_unique<my_pair[]>(state.range(0));
-      arr[0].str = "abc";
-      arr[0].val = 123;
     }
 }
 
@@ -64,9 +50,11 @@ static void BM_tmpbuff(benchmark::State& state) {
       //auto my_pair = std::move(arr[0]); // this is move, now arr[0] is unspecified
       std::return_temporary_buffer(p.first);
       */
-      auto p = std::get_temporary_buffer<uint64_t>(state.range(0));
+      auto p = std::get_temporary_buffer<char[20]>(state.range(0));
       auto arr = p.first;
-      arr[0] = 123;
+      arr[0][0] = 'a';
+      arr[0][1] = 'b';
+      arr[0][2] = 'c';
       std::return_temporary_buffer(p.first);
     }
 }
@@ -81,10 +69,18 @@ static void BM_malloc(benchmark::State& state) {
     }
 }
 
-//BENCHMARK(BM_Example)->Arg(8)->Arg(64)->Arg(4096);
-//BENCHMARK(BM_Alloc)->Arg(8)->Arg(64)->Arg(4096);
-//BENCHMARK(BM_Struct)->Arg(8)->Arg(64)->Arg(4096);
-//BENCHMARK(BM_tmpbuff)->Arg(8)->Arg(64)->Arg(4096);
+// Modern C++ RAII pointer
+// Problem: array initialization takes time
+BENCHMARK(BM_UniquePtr)->Arg(8)->Arg(64)->Arg(4096);
+
+// malloc overhead baseline.
+BENCHMARK(BM_MallocOnly)->Arg(8)->Arg(64)->Arg(4096);
+
+// tmpbuff can avoid initialization, but can only be used with
+// POD object. Using string here valgrind would report memleak
+BENCHMARK(BM_tmpbuff)->Arg(8)->Arg(64)->Arg(4096);
+
+// manual malloc with string can cause a leak, too.
 BENCHMARK(BM_malloc)->Arg(8)->Arg(64)->Arg(4096);
 
 BENCHMARK_MAIN();
