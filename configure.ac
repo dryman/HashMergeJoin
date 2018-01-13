@@ -13,5 +13,5 @@ AC_PROG_CXX
 
 # TODO: use pkgconfig to detect papi
 
-AC_CONFIG_FILES([Makefile hash_join/Makefile])
+AC_CONFIG_FILES([Makefile])
 AC_OUTPUT
