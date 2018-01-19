@@ -10,6 +10,21 @@ DEPENDENCIES
 * google-benchmark
 * papi
 
+BUILD
+-----
+
+```
+git submodule update --init --recursive
+autoreconf -vif
+./configure
+cd googletest
+make
+cd ..
+make [check]
+```
+
+`make check` for running tests.
+
 LICENSE
 -------
 
