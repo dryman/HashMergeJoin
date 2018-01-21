@@ -1,5 +1,7 @@
 #include "radix_hash.h"
 #include "gtest/gtest.h"
+#include <vector>
+#include <string>
 
 TEST(radix_hash_test, simple_test) {
   ASSERT_TRUE(1);
@@ -40,4 +42,15 @@ data[i]++;
 
 
 TEST(radix_hash_test, custom_iter) {
+  std::vector<std::pair<std::string, int>> src;
+  std::vector<std::pair<std::string, int>> dst;
+  dst.reserve(5);
+  src.push_back(std::make_pair("abc", 0));
+  src.push_back(std::make_pair("def", 1));
+  src.push_back(std::make_pair("ghi", 2));
+  src.push_back(std::make_pair("jkl", 3));
+  src.push_back(std::make_pair("mno", 4));
+
+  ::sort_hash<std::string>(src.begin(), src.end(), dst.begin(), 1);
+  ASSERT_TRUE(true);
 }
