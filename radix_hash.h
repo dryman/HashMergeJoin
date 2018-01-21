@@ -30,10 +30,10 @@ template <typename Key,
   iter--;
   for (; iter != begin; --iter) {
     h = Hash{}(std::get<0>(*iter));
-    dst[counters[h & mask]] = *iter;
+    dst[counters[h & mask]++] = *iter;
   }
   h = Hash{}(std::get<0>(*iter));
-  dst[counters[h & mask]] = *iter;
+  dst[counters[h & mask]++] = *iter;
 }
 
 #endif
