@@ -1,8 +1,10 @@
 #ifndef RADIX_HASH_H
 #define RADIX_HASH_H 1
 
+#include <iostream>
 #include <iterator>
 #include <utility>
+#include <vector>
 #include <functional>
 
 // TODO: Should benchmark the speed difference between array or vector.
@@ -10,25 +12,23 @@
 // TODO: use integer key and identity hash function for unit testing
 template <typename Key,
   typename Value,
+  typename Hash = std::hash<Key>,
   typename BidirectionalIterator,
-  typename RandomAccessIterator,
-  typename Hash = std::hash<Key>>
+  typename RandomAccessIterator>
   void sort_hash(BidirectionalIterator begin,
                  BidirectionalIterator end,
                  RandomAccessIterator dst,
                  int input_num,
                  int partition_power,
                  int nosort_power) {
-  std::size_t h;
-  int input_power, dst_idx;
-  auto iter = begin;
+  int input_power, num_iter, shift, dst_idx, prev_idx;
   int partitions = 1 << partition_power;
-  std::size_t mask;
+  std::size_t h, mask;
 
-  if (input_num & (input_num - 1) == 0) {
+  if ((input_num & (input_num - 1)) == 0) {
     input_power = input_num;
   } else {
-    input_power = 63 - __builtin_clzll(input);
+    input_power = 64 - __builtin_clzll(input_num);
   }
 
   if (input_power < nosort_power) {
@@ -38,18 +38,28 @@ template <typename Key,
 
   num_iter = (input_power - nosort_power) / partition_power;
   nosort_power = input_power - num_iter * partition_power;
-  mask = 1ULL << input_power;
+  mask = (1ULL << input_power) - 1;
+  shift = nosort_power + (num_iter - 1) * partition_power;
 
-  int counter_stack[num_iter][partitions] = {};
-  int iter_stack[num_iter] = {};
+  int counters[partitions];
+  int counter_stack[num_iter][partitions];
+  int iter_stack[num_iter];
+
+  for (int i = 0; i < partitions; i++)
+    counters[i] = 0;
+  for (int i = 0; i < num_iter; i++)
+    for (int j = 0; j < partitions; j++)
+      counter_stack[i][j] = 0;
+  for (int i = 0; i < num_iter; i++)
+    iter_stack[i] = 0;
 
   std::vector<std::tuple<std::size_t, Key, Value>> buffers[2];
   buffers[0].reserve(input_num);
   buffers[1].reserve(input_num);
 
-  for (iter = begin; iter != end; ++iter) {
+  for (auto iter = begin; iter != end; ++iter) {
     h = Hash{}(std::get<0>(*iter));
-    counters[h & mask]++;
+    counters[(h & mask) >> shift]++;
   }
   for (int i = 1; i < partitions; i++) {
     counters[i] += counters[i - 1];
@@ -59,11 +69,12 @@ template <typename Key,
   }
   counters[0] = 0;
   for (int i = 0; i < partitions; i++)
-    counter_stack[0][i] = counters;
+    counter_stack[0][i] = counters[i];
 
-  for (iter = begin; iter != end; ++iter) {
+  for (auto iter = begin; iter != end; ++iter) {
     h = Hash{}(std::get<0>(*iter));
-    dst_idx = counters[h & mask]++; // make this a template inline function
+    // TODO make this a template inline function
+    dst_idx = counters[(h & mask) >> shift]++;
     if (num_iter == 1) {
       dst[dst_idx] = *iter;
     } else {
@@ -75,6 +86,7 @@ template <typename Key,
   if (num_iter == 1) return;
 
   for (int i = 0; true;) {
+    std::cout << "i: " << i << "\n";
     if (iter_stack[i] == input_num - 1) {
       if (i == 0) return;
       iter_stack[i] = 0;
@@ -82,7 +94,7 @@ template <typename Key,
       i--;
       continue;
     }
-    mask = 1ULL << (input_power - (i + 1) * partition_power);
+    mask = (1ULL << (input_power - (i + 1) * partition_power)) - 1;
     shift = nosort_power + (num_iter - i - 1) * partition_power;
 
     // clear counters
@@ -106,7 +118,7 @@ template <typename Key,
 
     if (i < num_iter - 1) {
       for (int j = 0; j < partitions; j++)
-        counter_stack[i + 1][j] = counters;
+        counter_stack[i + 1][j] = counters[j];
       for (int j = counter_stack[i][iter_stack[i]];
            j < counter_stack[i][iter_stack[i] + 1];
            j++) {
@@ -120,7 +132,9 @@ template <typename Key,
            j < counter_stack[i][iter_stack[i] + 1];
            j++) {
         h = std::get<0>(buffers[i & 1][j]);
-        dst[counters[(h & mask) >> shift]++] = buffers[i & 1][j];
+        dst_idx = counters[(h & mask) >> shift]++;
+        std::get<0>(dst[dst_idx]) = std::get<1>(buffers[i & 1][j]);
+        std::get<1>(dst[dst_idx]) = std::get<2>(buffers[i & 1][j]);
         iter_stack[i]++;
       }
     }

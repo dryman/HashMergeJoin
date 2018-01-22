@@ -7,6 +7,32 @@ TEST(radix_hash_test, simple_test) {
   ASSERT_TRUE(1);
 }
 
+struct identity_hash
+{
+  std::size_t operator()(const int& k) const {
+    return k;
+  }
+};
+
+TEST(radix_hash_test, custom_iter) {
+  std::vector<std::pair<int, int>> src;
+  std::vector<std::pair<int, int>> dst;
+  dst.reserve(5);
+  src.push_back(std::make_pair(4, 4));
+  src.push_back(std::make_pair(3, 3));
+  src.push_back(std::make_pair(2, 2));
+  src.push_back(std::make_pair(1, 1));
+  src.push_back(std::make_pair(0, 0));
+
+  ::sort_hash<int,int,identity_hash>(src.begin(), src.end(), dst.begin(),
+                                     5, 3, 0);
+  EXPECT_EQ(0, dst[0].first);
+  EXPECT_EQ(1, dst[1].first);
+  EXPECT_EQ(2, dst[2].first);
+  EXPECT_EQ(3, dst[3].first);
+  EXPECT_EQ(4, dst[4].first);
+}
+
 /*
 TEST(radix_hash_test, pair_test) {
   std::pair<int, int[]> mypair = std::make_pair(2, new int[3]);
@@ -42,16 +68,3 @@ data[i]++;
 */
 
 
-TEST(radix_hash_test, custom_iter) {
-  std::vector<std::pair<std::string, int>> src;
-  std::vector<std::pair<std::string, int>> dst;
-  dst.reserve(5);
-  src.push_back(std::make_pair("abc", 0));
-  src.push_back(std::make_pair("def", 1));
-  src.push_back(std::make_pair("ghi", 2));
-  src.push_back(std::make_pair("jkl", 3));
-  src.push_back(std::make_pair("mno", 4));
-
-  ::sort_hash<std::string>(src.begin(), src.end(), dst.begin(), 5, 1);
-  ASSERT_TRUE(true);
-}
