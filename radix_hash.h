@@ -31,8 +31,11 @@ template <typename Key,
     input_power = 64 - __builtin_clzll(input_num);
   }
 
-  if (input_power < nosort_power) {
-    // TODO simply copy and exit.
+  if (input_power <= nosort_power) {
+    for (auto iter = begin; iter != end; iter++) {
+      *dst++ = *iter;
+      // TODO export_hash variant
+    }
     return;
   }
 

@@ -3,10 +3,6 @@
 #include <vector>
 #include <string>
 
-TEST(radix_hash_test, simple_test) {
-  ASSERT_TRUE(1);
-}
-
 struct identity_hash
 {
   std::size_t operator()(const int& k) const {
@@ -14,16 +10,31 @@ struct identity_hash
   }
 };
 
-TEST(radix_hash_test, custom_iter) {
+
+TEST(radix_hash_test, no_sort) {
+  ASSERT_TRUE(1);
   std::vector<std::pair<int, int>> src;
   std::vector<std::pair<int, int>> dst;
   dst.reserve(5);
-  src.push_back(std::make_pair(4, 4));
-  src.push_back(std::make_pair(3, 3));
-  src.push_back(std::make_pair(2, 2));
-  src.push_back(std::make_pair(1, 1));
-  src.push_back(std::make_pair(0, 0));
+  for (int i = 4; i > -1; i--) {
+    src.push_back(std::make_pair(i, i));
+  }
+  ::sort_hash<int,int,identity_hash>(src.begin(), src.end(), dst.begin(),
+                                     5, 3, 3);
+  EXPECT_EQ(4, dst[0].first);
+  EXPECT_EQ(3, dst[1].first);
+  EXPECT_EQ(2, dst[2].first);
+  EXPECT_EQ(1, dst[3].first);
+  EXPECT_EQ(0, dst[4].first);
+}
 
+TEST(radix_hash_test, full_sort) {
+  std::vector<std::pair<int, int>> src;
+  std::vector<std::pair<int, int>> dst;
+  dst.reserve(5);
+  for (int i = 4; i > -1; i--) {
+    src.push_back(std::make_pair(i, i));
+  }
   ::sort_hash<int,int,identity_hash>(src.begin(), src.end(), dst.begin(),
                                      5, 3, 0);
   EXPECT_EQ(0, dst[0].first);
