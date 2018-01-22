@@ -28,6 +28,7 @@ or
 if data[i] == n {
   if i == 0 => exit
   data[i] = 0;
+  data[i - 1] = 0;
   i--;
   continue;
 }
@@ -51,6 +52,6 @@ TEST(radix_hash_test, custom_iter) {
   src.push_back(std::make_pair("jkl", 3));
   src.push_back(std::make_pair("mno", 4));
 
-  ::sort_hash<std::string>(src.begin(), src.end(), dst.begin(), 1);
+  ::sort_hash<std::string>(src.begin(), src.end(), dst.begin(), 5, 1);
   ASSERT_TRUE(true);
 }
