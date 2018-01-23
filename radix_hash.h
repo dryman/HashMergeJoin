@@ -28,6 +28,7 @@ template <typename Key,
   if ((input_num & (input_num - 1)) == 0) {
     input_power = input_num;
   } else {
+    // TODO we may reduce one bit from input_power
     input_power = 64 - __builtin_clzll(input_num);
   }
 
@@ -56,9 +57,15 @@ template <typename Key,
   for (int i = 0; i < num_iter; i++)
     iter_stack[i] = 0;
 
-  std::vector<std::tuple<std::size_t, Key, Value>> buffers[2];
+  std::vector<std::vector<std::tuple<std::size_t, Key, Value>>> buffers;
+  buffers.reserve(num_iter);
+  for (int i = 0; i < num_iter; i++) {
+    buffers[i].reserve(input_num);
+  }
+  /*
   buffers[0].reserve(input_num);
   buffers[1].reserve(input_num);
+  */
 
   for (auto iter = begin; iter != end; ++iter) {
     h = Hash{}(std::get<0>(*iter));
@@ -88,17 +95,41 @@ template <typename Key,
   }
   if (num_iter == 1) return;
 
+  for (int i = 0; i < input_num; i++) {
+    std::cout << "{"
+              << std::get<0>(buffers[0][i]) << ", "
+              << std::get<1>(buffers[0][i]) << ", "
+              << std::get<2>(buffers[0][i]) << "},  ";
+  }
+  std::cout << "\n";
+
   for (int i = 0; true;) {
-    std::cout << "i: " << i << "\n";
+    std::cout << "i: " << i;
+    std::cout << " num_iter: " << num_iter;
+    std::cout << " iter_stack[i]: " << iter_stack[i] << "\n";
     if (iter_stack[i] == input_num - 1) {
       if (i == 0) return;
       iter_stack[i] = 0;
       iter_stack[i - 1]++;
       i--;
+      std::cout << "reaching early cont.\n";
       continue;
     }
-    mask = (1ULL << (input_power - (i + 1) * partition_power)) - 1;
+    mask = (1ULL << (input_power - i * partition_power)) - 1;
     shift = nosort_power + (num_iter - i - 1) * partition_power;
+    std::cout << "input_power: " << input_power << " ";
+    std::cout << "partition_power: " << partition_power << " ";
+    std::cout << "mask: " << mask << " shift: " << shift << "\n";
+
+    for (int j = 0; j < num_iter; j++) {
+      for (int k = 0; k < input_num; k++) {
+        std::cout << "{"
+                  << std::get<0>(buffers[j][k]) << ", "
+                  << std::get<1>(buffers[j][k]) << ", "
+                  << std::get<2>(buffers[j][k]) << "},  ";
+      }
+      std::cout << "\n";
+    }
 
     // clear counters
     for (int j = 0; j < partitions; j++)
@@ -107,7 +138,8 @@ template <typename Key,
     for (int j = counter_stack[i][iter_stack[i]];
          j < counter_stack[i][iter_stack[i] + 1];
          j++) {
-      h = std::get<0>(buffers[i & 1][j]);
+      //h = std::get<0>(buffers[i & 1][j]);
+      h = std::get<0>(buffers[i][j]);
       counters[(h & mask) >> shift]++;
     }
     prev_idx = counter_stack[i][iter_stack[i]];
@@ -125,21 +157,29 @@ template <typename Key,
       for (int j = counter_stack[i][iter_stack[i]];
            j < counter_stack[i][iter_stack[i] + 1];
            j++) {
-        h = std::get<0>(buffers[i & 1][j]);
+        //h = std::get<0>(buffers[i & 1][j]);
+        h = std::get<0>(buffers[i][j]);
+        buffers[i + 1][counters[(h & mask) >> shift]++] = buffers[i][j];
+        /*
         buffers[(i + 1) & 1][counters[(h & mask) >> shift]++] =
           buffers[i & 1][j];
+        */
       }
       i++;
     } else {
+      std::cout << "tip iter\n";
       for (int j = counter_stack[i][iter_stack[i]];
            j < counter_stack[i][iter_stack[i] + 1];
            j++) {
-        h = std::get<0>(buffers[i & 1][j]);
+        //h = std::get<0>(buffers[i & 1][j]);
+        h = std::get<0>(buffers[i][j]);
         dst_idx = counters[(h & mask) >> shift]++;
-        std::get<0>(dst[dst_idx]) = std::get<1>(buffers[i & 1][j]);
-        std::get<1>(dst[dst_idx]) = std::get<2>(buffers[i & 1][j]);
-        iter_stack[i]++;
+        //std::get<0>(dst[dst_idx]) = std::get<1>(buffers[i & 1][j]);
+        //std::get<1>(dst[dst_idx]) = std::get<2>(buffers[i & 1][j]);
+        std::get<0>(dst[dst_idx]) = std::get<1>(buffers[i][j]);
+        std::get<1>(dst[dst_idx]) = std::get<2>(buffers[i][j]);
       }
+      iter_stack[i]++;
     }
   }
 }

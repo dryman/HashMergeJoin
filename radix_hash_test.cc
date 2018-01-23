@@ -44,6 +44,22 @@ TEST(radix_hash_test, full_sort) {
   EXPECT_EQ(4, dst[4].first);
 }
 
+TEST(radix_hash_test, multi_pass_sort) {
+  std::vector<std::pair<int, int>> src;
+  std::vector<std::pair<int, int>> dst;
+  dst.reserve(5);
+  for (int i = 5; i > 0; i--) {
+    src.push_back(std::make_pair(i, i));
+  }
+  ::sort_hash<int,int,identity_hash>(src.begin(), src.end(), dst.begin(),
+                                     5, 1, 0);
+  EXPECT_EQ(1, dst[0].first);
+  EXPECT_EQ(2, dst[1].first);
+  EXPECT_EQ(3, dst[2].first);
+  EXPECT_EQ(4, dst[3].first);
+  EXPECT_EQ(5, dst[4].first);
+}
+
 /*
 TEST(radix_hash_test, pair_test) {
   std::pair<int, int[]> mypair = std::make_pair(2, new int[3]);
