@@ -44,6 +44,7 @@ TEST(radix_hash_test, full_sort) {
   EXPECT_EQ(4, dst[4].first);
 }
 
+/*
 TEST(radix_hash_test, multi_pass_sort) {
   std::vector<std::pair<int, int>> src;
   std::vector<std::pair<int, int>> dst;
@@ -59,6 +60,7 @@ TEST(radix_hash_test, multi_pass_sort) {
   EXPECT_EQ(4, dst[3].first);
   EXPECT_EQ(5, dst[4].first);
 }
+*/
 
 /*
 TEST(radix_hash_test, pair_test) {

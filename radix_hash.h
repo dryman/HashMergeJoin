@@ -25,12 +25,16 @@ template <typename Key,
   int partitions = 1 << partition_power;
   std::size_t h, mask;
 
+  /*
   if ((input_num & (input_num - 1)) == 0) {
     input_power = input_num;
   } else {
     // TODO we may reduce one bit from input_power
     input_power = 64 - __builtin_clzll(input_num);
   }
+  */
+    input_power = 63 - __builtin_clzll(input_num);
+  std::cout << "nosort_power: " << nosort_power << "\n";
 
   if (input_power <= nosort_power) {
     for (auto iter = begin; iter != end; iter++) {
@@ -40,10 +44,17 @@ template <typename Key,
     return;
   }
 
-  num_iter = (input_power - nosort_power) / partition_power;
-  nosort_power = input_power - num_iter * partition_power;
-  mask = (1ULL << input_power) - 1;
+  num_iter = (input_power - nosort_power + partition_power - 1)
+  / partition_power;
+  //nosort_power = input_power - num_iter * partition_power;
+  mask = (1ULL << (input_power + 1)) - 1;
   shift = nosort_power + (num_iter - 1) * partition_power;
+
+  std::cout << "num_iter: " << num_iter << "\n";
+  std::cout << "input_power: " << input_power << "\n";
+  std::cout << "nosort_power: " << nosort_power << "\n";
+  std::cout << "mask: " << std::hex << mask << "\n";
+  std::cout << "shift: " << std::hex << shift << "\n";
 
   int counters[partitions];
   int counter_stack[num_iter][partitions];
