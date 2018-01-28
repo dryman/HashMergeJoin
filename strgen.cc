@@ -2,8 +2,9 @@
 #include <iostream>
 #include <string>
 #include <math.h>
-#include <benchmark/benchmark.h>
+//#include <benchmark/benchmark.h>
 #include <algorithm>
+#include <assert.h>
 
 #include "strgen.h"
 
@@ -29,6 +30,7 @@ create_strvec(const int number) {
   for (int i = 0; i < sqrt_num; i++) {
     for (int j = 0; j < sqrt_num; j++) {
       if (pairs.size() == number) {
+        //std::cout << "end of strgen\n";
         std::random_shuffle(pairs.begin(), pairs.end());
         return pairs;
       }
@@ -41,6 +43,7 @@ create_strvec(const int number) {
   assert(0);
 }
 
+/*
 static void BM_genstr(benchmark::State& state) {
   for (auto _ : state) {
     auto v = create_strvec(state.range(0));
@@ -51,3 +54,4 @@ static void BM_genstr(benchmark::State& state) {
 
 BENCHMARK(BM_genstr)->Arg(65536)->Arg(1000000)->Arg(4000000);
 BENCHMARK_MAIN();
+*/

@@ -28,6 +28,15 @@ static void BM_UniquePtr(benchmark::State& state) {
     }
 }
 
+static void BM_Vector(benchmark::State& state) {
+  using namespace std;
+  for (auto _ : state)
+    {
+      std::vector<pair<string, uint64_t>> arr (state.range(0));
+      arr[0] = {"abc", 123};
+    }
+}
+
 static void BM_MallocOnly(benchmark::State& state) {
   for (auto _ : state)
     {
@@ -71,7 +80,9 @@ static void BM_malloc(benchmark::State& state) {
 
 // Modern C++ RAII pointer
 // Problem: array initialization takes time
-BENCHMARK(BM_UniquePtr)->Arg(8)->Arg(64)->Arg(4096);
+BENCHMARK(BM_UniquePtr)->Range(1024, 1 << 18);
+
+BENCHMARK(BM_Vector)->Range(1024, 1<<18);
 
 // malloc overhead baseline.
 BENCHMARK(BM_MallocOnly)->Arg(8)->Arg(64)->Arg(4096);

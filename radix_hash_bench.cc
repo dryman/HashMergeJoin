@@ -3,6 +3,7 @@
 #include <utility>
 #include <benchmark/benchmark.h>
 #include "radix_hash.h"
+#include "strgen.h"
 
 struct identity_hash
 {
@@ -35,10 +36,9 @@ static void BM_qsort(benchmark::State& state) {
 }
 
 static void BM_sort_hash(benchmark::State& state) {
-  std::vector<std::pair<int, int>> src;
-  std::vector<std::pair<int, int>> dst;
   int size = state.range(0);
-  dst.reserve(size);
+  std::vector<std::pair<int, int>> src;
+  std::vector<std::pair<int, int>> dst(size);
 
   for (int i = size; i > 0; i--) {
     src.push_back(std::make_pair(i, i));
@@ -52,10 +52,9 @@ static void BM_sort_hash(benchmark::State& state) {
 }
 
 static void BM_radix_hash(benchmark::State& state) {
-  std::vector<std::pair<int, int>> src;
-  std::vector<std::pair<int, int>> dst;
   int size = state.range(0);
-  dst.reserve(size);
+  std::vector<std::pair<int, int>> src;
+  std::vector<std::pair<int, int>> dst(size);
 
   for (int i = size; i > 0; i--) {
     src.push_back(std::make_pair(i, i));
@@ -66,6 +65,28 @@ static void BM_radix_hash(benchmark::State& state) {
       ::radix_hash<int,int,identity_hash>(src.begin(), src.end(), dst.begin(),
                                          size, state.range(1), 0);
     }
+}
+
+static void BM_sort_hash_str(benchmark::State& state) {
+  int size = state.range(0);
+  std::vector<std::pair<std::string, uint64_t>> dst(size);
+  auto src = ::create_strvec(size);
+
+  for (auto _ : state) {
+    ::sort_hash<std::string,uint64_t>(src.begin(), src.end(), dst.begin(),
+                                      size, state.range(1), 0);
+  }
+}
+
+static void BM_radix_hash_str(benchmark::State& state) {
+  int size = state.range(0);
+  std::vector<std::pair<std::string, uint64_t>> dst(size);
+  auto src = ::create_strvec(size);
+
+  for (auto _ : state) {
+    ::radix_hash<std::string,uint64_t>(src.begin(), src.end(), dst.begin(),
+                                       size, state.range(1), 0);
+  }
 }
 
 
@@ -80,5 +101,8 @@ static void RadixArguments(benchmark::internal::Benchmark* b) {
 BENCHMARK(BM_qsort)->Range(1 << 10, 1 << 18)->Complexity();
 BENCHMARK(BM_sort_hash)->Apply(RadixArguments)->Complexity();
 BENCHMARK(BM_radix_hash)->Apply(RadixArguments)->Complexity();
+
+BENCHMARK(BM_sort_hash_str)->Apply(RadixArguments)->Complexity();
+BENCHMARK(BM_radix_hash_str)->Apply(RadixArguments)->Complexity();
 
 BENCHMARK_MAIN();

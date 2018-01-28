@@ -69,9 +69,20 @@ template <typename Key,
   for (int i = 0; i < num_iter - 1; i++)
     iter_stack[i] = 0;
 
+  /*
   std::vector<std::tuple<std::size_t, Key, Value>> buffers[2];
-  buffers[0].reserve(input_num);
-  buffers[1].reserve(input_num);
+  //buffers[0].reserve(input_num);
+  //buffers[1].reserve(input_num);
+  // we need to initialize array else we'll get segmentation fault.
+  // Yet, using vector initialization makes our benchmark slow..
+  buffers[0] = std::vector<std::tuple<std::size_t, Key, Value>>(input_num);
+  buffers[1] = std::vector<std::tuple<std::size_t, Key, Value>>(input_num);
+  */
+  std::unique_ptr<std::tuple<std::size_t, Key, Value>[]> buffers[2];
+  buffers[0] = std::make_unique<
+  std::tuple<std::size_t, Key, Value>[]>(input_num);
+  buffers[1] = std::make_unique<
+  std::tuple<std::size_t, Key, Value>[]>(input_num);
 
   for (auto iter = begin; iter != end; ++iter) {
     h = Hash{}(std::get<0>(*iter));
@@ -206,9 +217,14 @@ template <typename Key,
   for (int i = 0; i < num_iter; i++)
     iter_stack[i] = 0;
 
-  std::vector<std::tuple<std::size_t, Key, Value>> buffers[2];
-  buffers[0].reserve(input_num);
-  buffers[1].reserve(input_num);
+  // std::vector<std::tuple<std::size_t, Key, Value>> buffers[2];
+  // buffers[0] = std::vector<std::tuple<std::size_t, Key, Value>>(input_num);
+  // buffers[1] = std::vector<std::tuple<std::size_t, Key, Value>>(input_num);
+  std::unique_ptr<std::tuple<std::size_t, Key, Value>[]> buffers[2];
+  buffers[0] = std::make_unique<
+    std::tuple<std::size_t, Key, Value>[]>(input_num);
+  buffers[1] = std::make_unique<
+    std::tuple<std::size_t, Key, Value>[]>(input_num);
 
   // Major difference to previous hash_sort: we calculate hash
   // value only once, but do an extra copy. Copy is likely to be cheaper
