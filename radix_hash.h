@@ -29,12 +29,12 @@ template <typename Key,
   typename Hash = std::hash<Key>,
   typename BidirectionalIterator,
   typename RandomAccessIterator>
-  void sort_hash(BidirectionalIterator begin,
-                 BidirectionalIterator end,
-                 RandomAccessIterator dst,
-                 int input_num,
-                 int partition_power,
-                 int nosort_power) {
+  void radix_hash_dp1(BidirectionalIterator begin,
+      BidirectionalIterator end,
+      RandomAccessIterator dst,
+      int input_num,
+      int partition_power,
+      int nosort_power) {
   int input_power, num_iter, shift, dst_idx, prev_idx;
   int partitions = 1 << partition_power;
   std::size_t h, mask;
@@ -177,12 +177,12 @@ template <typename Key,
   typename Hash = std::hash<Key>,
   typename BidirectionalIterator,
   typename RandomAccessIterator>
-  void radix_hash(BidirectionalIterator begin,
-                  BidirectionalIterator end,
-                  RandomAccessIterator dst,
-                  int input_num,
-                  int partition_power,
-                  int nosort_power) {
+  void radix_hash_dp2(BidirectionalIterator begin,
+      BidirectionalIterator end,
+      RandomAccessIterator dst,
+      int input_num,
+      int partition_power,
+      int nosort_power) {
   int input_power, num_iter, shift, dst_idx, prev_idx;
   int partitions = 1 << partition_power;
   std::size_t h, mask;
