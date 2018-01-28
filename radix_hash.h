@@ -7,6 +7,20 @@
 #include <vector>
 #include <functional>
 
+// namespace radix_hash?
+
+/*
+  need to benchmark how to get good template setup.
+template<typename RandomAccessIterator, typename TupleVector>
+void export_hash_tuple(RansomAccessIterator dst, int dst_idx,
+                       TupleVector& buffer) {
+}
+
+template<typename RandomAccessIterator>
+void export_kv_pair () {
+}
+*/
+
 // TODO: Should benchmark the speed difference between array or vector.
 // TODO: use boolean template to create an export_hash variant
 // TODO: use integer key and identity hash function for unit testing
