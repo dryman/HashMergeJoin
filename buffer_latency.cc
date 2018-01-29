@@ -26,6 +26,7 @@ static void BM_UniquePtr(benchmark::State& state) {
       auto arr = make_unique<pair<string, uint64_t>[]>(state.range(0));
       arr[0] = {"abc", 123};
     }
+  state.SetComplexityN(state.range(0));
 }
 
 static void BM_Vector(benchmark::State& state) {
@@ -35,6 +36,7 @@ static void BM_Vector(benchmark::State& state) {
       std::vector<pair<string, uint64_t>> arr (state.range(0));
       arr[0] = {"abc", 123};
     }
+  state.SetComplexityN(state.range(0));
 }
 
 static void BM_MallocOnly(benchmark::State& state) {
@@ -45,6 +47,7 @@ static void BM_MallocOnly(benchmark::State& state) {
       benchmark::DoNotOptimize(x[0] = 'a');
       free(x);
     }
+  state.SetComplexityN(state.range(0));
 }
 
 static void BM_tmpbuff(benchmark::State& state) {
@@ -66,6 +69,7 @@ static void BM_tmpbuff(benchmark::State& state) {
       arr[0][2] = 'c';
       std::return_temporary_buffer(p.first);
     }
+  state.SetComplexityN(state.range(0));
 }
 
 static void BM_malloc(benchmark::State& state) {
@@ -76,22 +80,23 @@ static void BM_malloc(benchmark::State& state) {
       arr[0] = {"01234567890123456789012345", 123};
       free(arr);
     }
+  state.SetComplexityN(state.range(0));
 }
 
 // Modern C++ RAII pointer
 // Problem: array initialization takes time
-BENCHMARK(BM_UniquePtr)->Range(1024, 1 << 18);
+BENCHMARK(BM_UniquePtr)->Range(1024, 1 << 18)->Complexity();
 
-BENCHMARK(BM_Vector)->Range(1024, 1<<18);
+BENCHMARK(BM_Vector)->Range(1024, 1<<18)->Complexity();
 
 // malloc overhead baseline.
-BENCHMARK(BM_MallocOnly)->Arg(8)->Arg(64)->Arg(4096);
+BENCHMARK(BM_MallocOnly)->Arg(8)->Arg(64)->Arg(4096)->Complexity();
 
 // tmpbuff can avoid initialization, but can only be used with
 // POD object. Using string here valgrind would report memleak
-BENCHMARK(BM_tmpbuff)->Arg(8)->Arg(64)->Arg(4096);
+BENCHMARK(BM_tmpbuff)->Arg(8)->Arg(64)->Arg(4096)->Complexity();
 
 // manual malloc with string can cause a leak, too.
-BENCHMARK(BM_malloc)->Arg(8)->Arg(64)->Arg(4096);
+BENCHMARK(BM_malloc)->Arg(8)->Arg(64)->Arg(4096)->Complexity();
 
 BENCHMARK_MAIN();

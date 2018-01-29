@@ -33,6 +33,7 @@ static void BM_qsort(benchmark::State& state) {
       state.ResumeTiming();
       std::sort(data.begin(), data.end(), pair_cmp);
     }
+  state.SetComplexityN(state.range(0));
 }
 
 static void BM_radix_hash_df1(benchmark::State& state) {
@@ -50,6 +51,7 @@ static void BM_radix_hash_df1(benchmark::State& state) {
                                               src.end(), dst.begin(),
                                               size, state.range(1), 0);
     }
+  state.SetComplexityN(state.range(0));
 }
 
 static void BM_radix_hash_df2(benchmark::State& state) {
@@ -67,6 +69,7 @@ static void BM_radix_hash_df2(benchmark::State& state) {
                                               src.end(), dst.begin(),
                                               size, state.range(1), 0);
     }
+  state.SetComplexityN(state.range(0));
 }
 
 static void BM_radix_hash_bf1(benchmark::State& state) {
@@ -84,6 +87,7 @@ static void BM_radix_hash_bf1(benchmark::State& state) {
                                               src.end(), dst.begin(),
                                               size, state.range(1), 0);
     }
+  state.SetComplexityN(state.range(0));
 }
 
 static void BM_radix_hash_df1_str(benchmark::State& state) {
@@ -96,6 +100,7 @@ static void BM_radix_hash_df1_str(benchmark::State& state) {
                                            src.end(), dst.begin(),
                                            size, state.range(1), 0);
   }
+  state.SetComplexityN(state.range(0));
 }
 
 static void BM_radix_hash_df2_str(benchmark::State& state) {
@@ -108,6 +113,7 @@ static void BM_radix_hash_df2_str(benchmark::State& state) {
                                            src.end(), dst.begin(),
                                            size, state.range(1), 0);
   }
+  state.SetComplexityN(state.range(0));
 }
 
 static void BM_radix_hash_bf1_str(benchmark::State& state) {
@@ -120,11 +126,12 @@ static void BM_radix_hash_bf1_str(benchmark::State& state) {
                                            src.end(), dst.begin(),
                                            size, state.range(1), 0);
   }
+  state.SetComplexityN(state.range(0));
 }
 
 
 static void RadixArguments(benchmark::internal::Benchmark* b) {
-  for (int i = 8; i < 16; i+=1) {
+  for (int i = 10; i < 13; i+=1) {
     for (int j = 1024; j < (1UL << 18); j <<= 2) {
       b->Args({j, i});
     }

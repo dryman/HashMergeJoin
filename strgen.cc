@@ -15,7 +15,7 @@ create_strvec(const int number) {
   int sqrt_num = (int)ceil(sqrt((double)number));
 
   std::fstream fs;
-  fs.open("/usr/shared/dict/words", std::fstream::in);
+  fs.open("/usr/share/dict/words", std::fstream::in);
 
   // TODO
   // To get better cache performance, we should consider
