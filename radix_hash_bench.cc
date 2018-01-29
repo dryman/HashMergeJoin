@@ -139,11 +139,8 @@ static void RadixArguments(benchmark::internal::Benchmark* b) {
 }
 
 /*
- * Note: for integer key, breadth first search is faster than
- * depth first search, most likely due to its loop structure is
- * simpler.
- * However, for string key, depth first search is faster. Depth
- * first search gains more cache hit than breadth first approach.
+ * Note: breadth first search outperforms depth first search when
+ * input is small. For very large input, depth first wins a little bit.
  */
 
 BENCHMARK(BM_qsort)->Range(1 << 10, 1 << 18)->Complexity();
