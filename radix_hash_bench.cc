@@ -39,7 +39,7 @@ static void BM_qsort(benchmark::State& state) {
 static void BM_radix_hash_df1(benchmark::State& state) {
   int size = state.range(0);
   std::vector<std::pair<int, int>> src;
-  std::vector<std::pair<int, int>> dst(size);
+  std::vector<std::tuple<std::size_t, int, int>> dst(size);
 
   for (int i = size; i > 0; i--) {
     src.push_back(std::make_pair(i, i));
@@ -57,7 +57,7 @@ static void BM_radix_hash_df1(benchmark::State& state) {
 static void BM_radix_hash_df2(benchmark::State& state) {
   int size = state.range(0);
   std::vector<std::pair<int, int>> src;
-  std::vector<std::pair<int, int>> dst(size);
+  std::vector<std::tuple<std::size_t, int, int>> dst(size);
 
   for (int i = size; i > 0; i--) {
     src.push_back(std::make_pair(i, i));
@@ -75,7 +75,7 @@ static void BM_radix_hash_df2(benchmark::State& state) {
 static void BM_radix_hash_bf1(benchmark::State& state) {
   int size = state.range(0);
   std::vector<std::pair<int, int>> src;
-  std::vector<std::pair<int, int>> dst(size);
+  std::vector<std::tuple<std::size_t, int, int>> dst(size);
 
   for (int i = size; i > 0; i--) {
     src.push_back(std::make_pair(i, i));
@@ -92,7 +92,7 @@ static void BM_radix_hash_bf1(benchmark::State& state) {
 
 static void BM_radix_hash_df1_str(benchmark::State& state) {
   int size = state.range(0);
-  std::vector<std::pair<std::string, uint64_t>> dst(size);
+  std::vector<std::tuple<std::size_t, std::string, uint64_t>> dst(size);
   auto src = ::create_strvec(size);
 
   for (auto _ : state) {
@@ -105,7 +105,7 @@ static void BM_radix_hash_df1_str(benchmark::State& state) {
 
 static void BM_radix_hash_df2_str(benchmark::State& state) {
   int size = state.range(0);
-  std::vector<std::pair<std::string, uint64_t>> dst(size);
+  std::vector<std::tuple<std::size_t, std::string, uint64_t>> dst(size);
   auto src = ::create_strvec(size);
 
   for (auto _ : state) {
@@ -118,7 +118,7 @@ static void BM_radix_hash_df2_str(benchmark::State& state) {
 
 static void BM_radix_hash_bf1_str(benchmark::State& state) {
   int size = state.range(0);
-  std::vector<std::pair<std::string, uint64_t>> dst(size);
+  std::vector<std::tuple<std::size_t, std::string, uint64_t>> dst(size);
   auto src = ::create_strvec(size);
 
   for (auto _ : state) {

@@ -89,8 +89,8 @@ static void BM_radix_hash_join_raw(benchmark::State& state) {
   auto r = ::create_strvec(size);
   auto s = ::create_strvec(size);
 
-  auto r_sorted = KeyValVec(r.size());
-  auto s_sorted = KeyValVec(s.size());
+  auto r_sorted = HashKeyValVec(r.size());
+  auto s_sorted = HashKeyValVec(s.size());
 
   ::radix_hash_bf1<std::string, uint64_t>(r.begin(), r.end(), r_sorted.begin(),
                                           r.size(), 11, 0);
@@ -101,7 +101,8 @@ static void BM_radix_hash_join_raw(benchmark::State& state) {
     for (auto r_it = r_sorted.begin(),
            s_it = s_sorted.begin();
          r_it != r_sorted.end() || s_it != s_sorted.end();) {
-      benchmark::DoNotOptimize(r_it->first == s_it->first);
+      benchmark::DoNotOptimize(std::get<0>(*r_it) ==
+                               std::get<0>(*s_it));
       r_it++;
       s_it++;
     }
@@ -114,8 +115,8 @@ static void BM_radix_hash_join_df_raw(benchmark::State& state) {
   auto r = ::create_strvec(size);
   auto s = ::create_strvec(size);
 
-  auto r_sorted = KeyValVec(r.size());
-  auto s_sorted = KeyValVec(s.size());
+  auto r_sorted = HashKeyValVec(r.size());
+  auto s_sorted = HashKeyValVec(s.size());
 
   ::radix_hash_df1<std::string, uint64_t>(r.begin(), r.end(), r_sorted.begin(),
                                           r.size(), 11, 0);
@@ -126,7 +127,8 @@ static void BM_radix_hash_join_df_raw(benchmark::State& state) {
     for (auto r_it = r_sorted.begin(),
            s_it = s_sorted.begin();
          r_it != r_sorted.end() || s_it != s_sorted.end();) {
-      benchmark::DoNotOptimize(r_it->first == s_it->first);
+      benchmark::DoNotOptimize(std::get<0>(*r_it) ==
+                               std::get<0>(*s_it));
       r_it++;
       s_it++;
     }

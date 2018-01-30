@@ -7,6 +7,8 @@
 #include <functional>
 
 typedef std::vector<std::pair<std::string, uint64_t>> KeyValVec;
+typedef std::vector<std::tuple<std::size_t, std::string, uint64_t>>
+  HashKeyValVec;
 
 void single_table_join(KeyValVec r, KeyValVec s,
     std::function<void(std::string key, uint64_t r_val, uint64_t s_val)>

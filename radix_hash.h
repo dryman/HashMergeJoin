@@ -44,8 +44,11 @@ template <typename Key,
 
   if (input_power <= nosort_power) {
     for (auto iter = begin; iter != end; iter++) {
-      *dst++ = *iter;
-      // TODO export_hash variant
+      h = Hash{}(std::get<0>(*iter));
+      std::get<0>(*dst) = h;
+      std::get<1>(*dst) = iter->first;
+      std::get<2>(*dst) = iter->second;
+      ++dst;
     }
     return;
   }
@@ -69,15 +72,6 @@ template <typename Key,
   for (int i = 0; i < num_iter - 1; i++)
     iter_stack[i] = 0;
 
-  /*
-  std::vector<std::tuple<std::size_t, Key, Value>> buffers[2];
-  //buffers[0].reserve(input_num);
-  //buffers[1].reserve(input_num);
-  // we need to initialize array else we'll get segmentation fault.
-  // Yet, using vector initialization makes our benchmark slow..
-  buffers[0] = std::vector<std::tuple<std::size_t, Key, Value>>(input_num);
-  buffers[1] = std::vector<std::tuple<std::size_t, Key, Value>>(input_num);
-  */
   std::unique_ptr<std::tuple<std::size_t, Key, Value>[]> buffers[2];
   buffers[0] = std::make_unique<
   std::tuple<std::size_t, Key, Value>[]>(input_num);
@@ -103,7 +97,9 @@ template <typename Key,
     // TODO make this a template inline function
     dst_idx = counters[(h & mask) >> shift]++;
     if (num_iter == 1) {
-      dst[dst_idx] = *iter;
+      std::get<0>(dst[dst_idx]) = h;
+      std::get<1>(dst[dst_idx]) = iter->first;
+      std::get<2>(dst[dst_idx]) = iter->second;
     } else {
       std::get<0>(buffers[0][dst_idx]) = h;
       std::get<1>(buffers[0][dst_idx]) = iter->first;
@@ -164,8 +160,7 @@ template <typename Key,
            j++) {
         h = std::get<0>(buffers[i & 1][j]);
         dst_idx = counters[(h & mask) >> shift]++;
-        std::get<0>(dst[dst_idx]) = std::get<1>(buffers[i & 1][j]);
-        std::get<1>(dst[dst_idx]) = std::get<2>(buffers[i & 1][j]);
+        *(dst + dst_idx) = buffers[i & 1][j];
       }
       iter_stack[i]++;
     }
@@ -192,8 +187,11 @@ template <typename Key,
 
   if (input_power <= nosort_power) {
     for (auto iter = begin; iter != end; iter++) {
-      *dst++ = *iter;
-      // TODO export_hash variant
+      h = Hash{}(std::get<0>(*iter));
+      std::get<0>(*dst) = h;
+      std::get<1>(*dst) = iter->first;
+      std::get<2>(*dst) = iter->second;
+      ++dst;
     }
     return;
   }
@@ -217,9 +215,6 @@ template <typename Key,
   for (int i = 0; i < num_iter; i++)
     iter_stack[i] = 0;
 
-  // std::vector<std::tuple<std::size_t, Key, Value>> buffers[2];
-  // buffers[0] = std::vector<std::tuple<std::size_t, Key, Value>>(input_num);
-  // buffers[1] = std::vector<std::tuple<std::size_t, Key, Value>>(input_num);
   std::unique_ptr<std::tuple<std::size_t, Key, Value>[]> buffers[2];
   buffers[0] = std::make_unique<
     std::tuple<std::size_t, Key, Value>[]>(input_num);
@@ -256,8 +251,7 @@ template <typename Key,
     for (int i = 0; i < input_num; i++) {
       h = std::get<0>(buffers[1][i]);
       dst_idx = counters[(h & mask) >> shift]++;
-      std::get<0>(dst[dst_idx]) = std::get<1>(buffers[1][i]);
-      std::get<1>(dst[dst_idx]) = std::get<2>(buffers[1][i]);
+      *(dst + dst_idx) = buffers[1][i];
     }
     return;
   } else {
@@ -318,8 +312,7 @@ template <typename Key,
            j++) {
         h = std::get<0>(buffers[i & 1][j]);
         dst_idx = counters[(h & mask) >> shift]++;
-        std::get<0>(dst[dst_idx]) = std::get<1>(buffers[i & 1][j]);
-        std::get<1>(dst[dst_idx]) = std::get<2>(buffers[i & 1][j]);
+        *(dst + dst_idx) = buffers[i & 1][j];
       }
       iter_stack[i]++;
     }
@@ -346,8 +339,11 @@ template <typename Key,
 
   if (input_power <= nosort_power) {
     for (auto iter = begin; iter != end; iter++) {
-      *dst++ = *iter;
-      // TODO export_hash variant
+      h = Hash{}(std::get<0>(*iter));
+      std::get<0>(*dst) = h;
+      std::get<1>(*dst) = iter->first;
+      std::get<2>(*dst) = iter->second;
+      ++dst;
     }
     return;
   }
@@ -385,15 +381,15 @@ template <typename Key,
   if (num_iter == 1) {
     for (auto iter = begin; iter != end; ++iter) {
       h = Hash{}(std::get<0>(*iter));
-      // TODO make this a template inline function
       dst_idx = counters[(h & mask) >> shift]++;
-      dst[dst_idx] = *iter;
+      std::get<0>(dst[dst_idx]) = h;
+      std::get<1>(dst[dst_idx]) = iter->first;
+      std::get<2>(dst[dst_idx]) = iter->second;
     }
     return;
   } else {
     for (auto iter = begin; iter != end; ++iter) {
       h = Hash{}(std::get<0>(*iter));
-      // TODO make this a template inline function
       dst_idx = counters[(h & mask) >> shift]++;
       std::get<0>(buffers[0][dst_idx]) = h;
       std::get<1>(buffers[0][dst_idx]) = iter->first;
@@ -489,8 +485,7 @@ template <typename Key,
       for (int k = anchor_idx; k < j; k++) {
         h = std::get<0>(buffers[iter & 1][k]);
         dst_idx = counters[(h & mask2) >> shift2]++;
-        std::get<0>(dst[dst_idx]) = std::get<1>(buffers[iter & 1][k]);
-        std::get<1>(dst[dst_idx]) = std::get<2>(buffers[iter & 1][k]);
+        *(dst + dst_idx) = buffers[iter & 1][k];
       }
       // clear up counters and reset anchor
       for (int k = 0; k < partitions; k++) {
@@ -512,8 +507,7 @@ template <typename Key,
   for (int k = anchor_idx; k < input_num; k++) {
     h = std::get<0>(buffers[iter & 1][k]);
     dst_idx = counters[(h & mask2) >> shift2]++;
-    std::get<0>(dst[dst_idx]) = std::get<1>(buffers[iter & 1][k]);
-    std::get<1>(dst[dst_idx]) = std::get<2>(buffers[iter & 1][k]);
+    *(dst + dst_idx) = buffers[iter & 1][k];
   }
 }
 
