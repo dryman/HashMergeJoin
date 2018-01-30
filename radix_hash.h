@@ -9,17 +9,42 @@
 
 // namespace radix_hash?
 
-/*
-  need to benchmark how to get good template setup.
-template<typename RandomAccessIterator, typename TupleVector>
-void export_hash_tuple(RansomAccessIterator dst, int dst_idx,
-                       TupleVector& buffer) {
+static inline
+int compute_power(int input_num) {
+  return 64 - __builtin_clzll(input_num);
 }
 
-template<typename RandomAccessIterator>
-void export_kv_pair () {
+static inline
+std::size_t compute_mask(int input_num) {
+  return (1ULL << ::compute_power(input_num)) - 1;
 }
-*/
+
+template<typename Key,
+  typename Value>
+  bool HashTupleCmp(std::tuple<std::size_t, Key, Value>const& a,
+                    std::tuple<std::size_t, Key, Value>const& b,
+                    std::size_t mask) {
+  std::size_t a_hash, b_hash, a_mask_hash, b_mask_hash;
+  a_hash = std::get<0>(a);
+  b_hash = std::get<0>(b);
+  a_mask_hash = a_hash & mask;
+  b_mask_hash = b_hash & mask;
+  if (a_mask_hash != b_mask_hash) {
+    return a_mask_hash < b_mask_hash;
+  }
+  if (a_hash != b_hash) {
+    return a_hash < b_hash;
+  }
+  return std::get<1>(a) < std::get<1>(b);
+}
+
+template<typename Key,
+  typename Value>
+  bool HashTupleEquiv(std::tuple<std::size_t, Key, Value>const& a,
+                    std::tuple<std::size_t, Key, Value>const& b) {
+  return std::get<0>(a) == std::get<0>(b) &&
+    std::get<1>(a) == std::get<1>(b);
+}
 
 // TODO: Should benchmark the speed difference between array or vector.
 // TODO: use boolean template to create an export_hash variant
@@ -39,8 +64,7 @@ template <typename Key,
   int partitions = 1 << partition_power;
   std::size_t h, mask;
 
-  // invariant: (1 << input_power) - 1 can hold all values.
-  input_power = 64 - __builtin_clzll(input_num);
+  input_power = ::compute_power(input_num);
 
   if (input_power <= nosort_power) {
     for (auto iter = begin; iter != end; iter++) {
@@ -55,7 +79,7 @@ template <typename Key,
 
   num_iter = (input_power - nosort_power
               + partition_power - 1) / partition_power;
-  mask = (1ULL << input_power) - 1;
+  mask = ::compute_mask(input_num);
   shift = input_power - partition_power;
   shift = shift < 0 ? 0 : shift;
 
@@ -182,8 +206,7 @@ template <typename Key,
   int partitions = 1 << partition_power;
   std::size_t h, mask;
 
-  // invariant: (1 << input_power) - 1 can hold all values.
-  input_power = 64 - __builtin_clzll(input_num);
+  input_power = ::compute_power(input_num);
 
   if (input_power <= nosort_power) {
     for (auto iter = begin; iter != end; iter++) {
@@ -332,10 +355,9 @@ template <typename Key,
       int nosort_power) {
   int input_power, num_iter, iter, shift, shift1, shift2, dst_idx, anchor_idx;
   int partitions = 1 << partition_power;
-  std::size_t h, h1, h2, mask, mask1, mask2, anchor_h1;
+  std::size_t h, h1, h2, h_cnt, mask, mask1, mask2, anchor_h1;
 
-  // invariant: (1 << input_power) - 1 can hold all values.
-  input_power = 64 - __builtin_clzll(input_num);
+  input_power = ::compute_power(input_num);
 
   if (input_power <= nosort_power) {
     for (auto iter = begin; iter != end; iter++) {
@@ -355,7 +377,9 @@ template <typename Key,
   shift = shift < 0 ? 0 : shift;
 
   // invariant: counters[partitions] is the total count
-  int counters[partitions + 1];
+  int counters[partitions];
+  int flush_counters[partitions];
+  int idx_counters[partitions];
 
   for (int i = 0; i < partitions + 1; i++)
     counters[i] = 0;
@@ -373,7 +397,7 @@ template <typename Key,
   for (int i = 1; i < partitions; i++) {
     counters[i] += counters[i - 1];
   }
-  for (int i = partitions; i != 0; i--) {
+  for (int i = partitions - 1; i != 0; i--) {
     counters[i] = counters[i - 1];
   }
   counters[0] = 0;
@@ -443,7 +467,7 @@ template <typename Key,
     for (int k = 1; k < partitions; k++) {
       counters[k] += counters[k - 1];
     }
-    for (int k = partitions; k != 0; k--) {
+    for (int k = partitions - 1; k != 0; k--) {
       counters[k] = counters[k - 1] + anchor_idx;;
     }
     counters[0] = anchor_idx;
@@ -475,17 +499,32 @@ template <typename Key,
       counters[h2]++;
     } else {
       // flush counters
+      for (int k = 0; k < partitions; k++) {
+        flush_counters[k] = 0;
+      }
+      idx_counters[0] = counters[0];
       for (int k = 1; k < partitions; k++) {
-        counters[k] += counters[k - 1];
+        idx_counters[k] = idx_counters[k - 1] + counters[k];
       }
-      for (int k = partitions; k != 0; k--) {
-        counters[k] = counters[k - 1] + anchor_idx;;
+      for (int k = partitions - 1; k != 0; k--) {
+        idx_counters[k] = idx_counters[k - 1] + anchor_idx;;
       }
-      counters[0] = anchor_idx;
+      idx_counters[0] = anchor_idx;
+
       for (int k = anchor_idx; k < j; k++) {
         h = std::get<0>(buffers[iter & 1][k]);
-        dst_idx = counters[(h & mask2) >> shift2]++;
+        h_cnt = (h & mask2) >> shift2;
+        dst_idx = idx_counters[h_cnt]++;
+        flush_counters[h_cnt]++;
         *(dst + dst_idx) = buffers[iter & 1][k];
+        if (nosort_power == 0) {
+          for (int m = flush_counters[h_cnt]; m < counters[h_cnt]; m++) {
+            if (HashTupleCmp(*(dst + dst_idx), *(dst + dst_idx - 1), mask)) {
+              std::swap(*(dst + dst_idx), *(dst + dst_idx - 1));
+              dst_idx--;
+            } else break;
+          }
+        }
       }
       // clear up counters and reset anchor
       for (int k = 0; k < partitions; k++) {
@@ -497,17 +536,32 @@ template <typename Key,
     }
   }
   // flush counters
+  for (int k = 0; k < partitions; k++) {
+    flush_counters[k] = 0;
+  }
+  idx_counters[0] = counters[0];
   for (int k = 1; k < partitions; k++) {
-    counters[k] += counters[k - 1];
+    idx_counters[k] = idx_counters[k - 1] + counters[k];
   }
-  for (int k = partitions; k != 0; k--) {
-    counters[k] = counters[k - 1] + anchor_idx;;
+  for (int k = partitions - 1; k != 0; k--) {
+    idx_counters[k] = idx_counters[k - 1] + anchor_idx;;
   }
-  counters[0] = anchor_idx;
+  idx_counters[0] = anchor_idx;
+
   for (int k = anchor_idx; k < input_num; k++) {
     h = std::get<0>(buffers[iter & 1][k]);
-    dst_idx = counters[(h & mask2) >> shift2]++;
+    h_cnt = (h & mask2) >> shift2;
+    dst_idx = idx_counters[h_cnt]++;
+    flush_counters[h_cnt]++;
     *(dst + dst_idx) = buffers[iter & 1][k];
+    if (nosort_power == 0) {
+      for (int m = flush_counters[h_cnt]; m < counters[h_cnt]; m++) {
+        if (HashTupleCmp(*(dst + dst_idx), *(dst + dst_idx - 1), mask)) {
+          std::swap(*(dst + dst_idx), *(dst + dst_idx - 1));
+          dst_idx--;
+        } else break;
+      }
+    }
   }
 }
 
