@@ -502,14 +502,10 @@ template <typename Key,
       for (int k = 0; k < partitions; k++) {
         flush_counters[k] = 0;
       }
-      idx_counters[0] = counters[0];
-      for (int k = 1; k < partitions; k++) {
-        idx_counters[k] = idx_counters[k - 1] + counters[k];
-      }
-      for (int k = partitions - 1; k != 0; k--) {
-        idx_counters[k] = idx_counters[k - 1] + anchor_idx;;
-      }
       idx_counters[0] = anchor_idx;
+      for (unsigned int k = 1; k < partitions; k++) {
+        idx_counters[k] = idx_counters[k-1] + counters[k-1];
+      }
 
       for (int k = anchor_idx; k < j; k++) {
         h = std::get<0>(buffers[iter & 1][k]);
@@ -539,14 +535,10 @@ template <typename Key,
   for (int k = 0; k < partitions; k++) {
     flush_counters[k] = 0;
   }
-  idx_counters[0] = counters[0];
-  for (int k = 1; k < partitions; k++) {
-    idx_counters[k] = idx_counters[k - 1] + counters[k];
-  }
-  for (int k = partitions - 1; k != 0; k--) {
-    idx_counters[k] = idx_counters[k - 1] + anchor_idx;;
-  }
   idx_counters[0] = anchor_idx;
+  for (unsigned int k = 1; k < partitions; k++) {
+    idx_counters[k] = idx_counters[k-1] + counters[k-1];
+  }
 
   for (int k = anchor_idx; k < input_num; k++) {
     h = std::get<0>(buffers[iter & 1][k]);
