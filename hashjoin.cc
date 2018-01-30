@@ -4,7 +4,7 @@
 #include "radix_hash.h"
 
 void single_table_join(KeyValVec r, KeyValVec s,
-    std::function<void(std::string key, uint64_t r_val, uint64_t s_val)>
+    std::function<void(std::string const& key, uint64_t r_val, uint64_t s_val)>
     callback) {
   std::unordered_map<std::string, uint64_t> s_map;
   s_map.reserve(s.size());
@@ -17,7 +17,7 @@ void single_table_join(KeyValVec r, KeyValVec s,
 }
 
 void radix_hash_table_join(KeyValVec r, KeyValVec s,
-    std::function<void(std::string key, uint64_t r_val, uint64_t s_val)>
+    std::function<void(std::string const& key, uint64_t r_val, uint64_t s_val)>
     callback) {
 
   auto r_sorted = HashKeyValVec(r.size());
@@ -36,7 +36,7 @@ void radix_hash_table_join(KeyValVec r, KeyValVec s,
 }
 
 void radix_hash_join(KeyValVec r, KeyValVec s,
-    std::function<void(std::string key, uint64_t r_val, uint64_t s_val)>
+    std::function<void(std::string const& key, uint64_t r_val, uint64_t s_val)>
     callback) {
 
   auto r_sorted = HashKeyValVec(r.size());
