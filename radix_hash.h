@@ -442,16 +442,13 @@ template <typename Key,
         counters[h2]++;
       } else {
         // flush counters
-        for (int k = 1; k < partitions; k++) {
-          counters[k] += counters[k - 1];
+        idx_counters[0] = anchor_idx;
+        for (unsigned int k = 1; k < partitions; k++) {
+          idx_counters[k] = idx_counters[k-1] + counters[k-1];
         }
-        for (int k = partitions; k != 0; k--) {
-          counters[k] = counters[k - 1] + anchor_idx;;
-        }
-        counters[0] = anchor_idx;
         for (int k = anchor_idx; k < j; k++) {
           h = std::get<0>(buffers[iter & 1][k]);
-          buffers[(iter + 1) & 1][counters[(h & mask2) >> shift2]++] =
+          buffers[(iter + 1) & 1][idx_counters[(h & mask2) >> shift2]++] =
           buffers[iter & 1][k];
         }
         // clear up counters and reset anchor
@@ -464,16 +461,13 @@ template <typename Key,
       }
     }
     // flush counters
-    for (int k = 1; k < partitions; k++) {
-      counters[k] += counters[k - 1];
+    idx_counters[0] = anchor_idx;
+    for (unsigned int k = 1; k < partitions; k++) {
+      idx_counters[k] = idx_counters[k-1] + counters[k-1];
     }
-    for (int k = partitions - 1; k != 0; k--) {
-      counters[k] = counters[k - 1] + anchor_idx;;
-    }
-    counters[0] = anchor_idx;
     for (int k = anchor_idx; k < input_num; k++) {
       h = std::get<0>(buffers[iter & 1][k]);
-      buffers[(iter + 1) & 1][counters[(h & mask2) >> shift2]++] =
+      buffers[(iter + 1) & 1][idx_counters[(h & mask2) >> shift2]++] =
         buffers[iter & 1][k];
     }
   }
