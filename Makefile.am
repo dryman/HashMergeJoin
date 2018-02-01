@@ -9,7 +9,7 @@ radix_hash_test_CXXFLAGS = -std=c++14
 radix_hash_test_LDADD = googletest/googletest/lib/libgtest.la googletest/googletest/lib/libgtest_main.la
 radix_hash_test_LDFLAGS = -static
 
-bin_PROGRAMS = buffer_latency radix_hash_bench hashjoin_bench
+bin_PROGRAMS = buffer_latency radix_hash_bench hashjoin_bench callback_bench
 
 buffer_latency_SOURCES = buffer_latency.cc
 buffer_latency_CXXFLAGS = -std=c++14
@@ -22,3 +22,7 @@ radix_hash_bench_LDFLAGS = -lbenchmark
 hashjoin_bench_SOURCES = hashjoin_bench.cc hashjoin.cc strgen.cc
 hashjoin_bench_CXXFLAGS = -std=c++14
 hashjoin_bench_LDFLAGS = -lbenchmark
+
+callback_bench_SOURCES = callback_bench.cc strgen.cc
+callback_bench_CXXFLAGS = -std=c++14
+callback_bench_LDFLAGS = -lbenchmark
