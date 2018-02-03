@@ -4,6 +4,7 @@
 #include <vector>
 #include <string>
 #include <utility>
+#include <type_traits>
 #include <functional>
 #include "radix_hash.h"
 
@@ -41,5 +42,32 @@ void radix_hash_join_templated(KeyValVec r, KeyValVec s, F const& callback) {
     s_it++;
   }
 }
+
+template<typename RIter, typename SIter>
+class HashMergeJoin {
+  static_assert(std::is_same<
+                typename RIter::value_type::first_type,
+                typename SIter::value_type::first_type>::value,
+                "RIter and SIter key type must be the same");
+  static_assert(std::is_same<
+                typename RIter::difference_type,
+                typename SIter::differende_type>::value,
+                "RIter and SIter difference type must be the same");
+  typedef typename RIter::value_type::first_type Key;
+  typedef typename RIter::value_type::second_type RValue;
+  typedef typename SIter::value_type::second_type SValue;
+  typedef typename Difference;
+ public:
+  HashMergeJoin(RIter r_begin, RIter r_end,
+                SIter s_begin, SIter s_end) {
+    Difference r_size, s_size;
+    r_size = std::difference(r_begin, r_end);
+    s_size = std::difference(s_begin, s_end);
+
+  }
+ private:
+  std::vector<std::tuple<std::size_t, Key, RValue>> r_sorted;
+  std::vector<std::tuple<std::size_t, Key, SValue>> s_sorted;
+};
 
 #endif
