@@ -36,7 +36,7 @@ public:
     iterator operator++(int) {iterator tmp(*this); operator++(); return tmp;}
     bool operator==(const iterator& rhs) const {return iter == rhs.iter;}
     bool operator!=(const iterator& rhs) const {return iter != rhs.iter;}
-    std::string& operator*() {return iter->first;}
+    reference operator*() {return iter->first;}
 
   private:
     std::vector<std::pair<std::string, uint64_t>>::iterator iter;
@@ -86,9 +86,29 @@ static void BM_ClassCB(benchmark::State& state) {
   state.SetComplexityN(size);
 }
 
+static void BM_two_vec(benchmark::State& state) {
+  int size = state.range(0);
+  auto vec_a = std::vector<int>(size);
+  auto vec_b = std::vector<int>(size);
+  auto vec_c = std::vector<int>(1);
+  for (int i = 0; i < size; i++) {
+    vec_a[i] = i;
+    vec_b[i] = size - i;
+  }
+  for (auto _ : state) {
+    vec_c[0] = 0;
+    for (int i = 0; i < size; i++) {
+      vec_c[0] += vec_a[i] + vec_b[i];
+    }
+    benchmark::ClobberMemory();
+  }
+  state.SetComplexityN(size);
+}
+
 BENCHMARK(BM_std_function_cb)->Range(1<<10, 1<<20)->Complexity(benchmark::oN);
 BENCHMARK(BM_template_function_cb)->Range(1<<10, 1<<20)
 ->Complexity(benchmark::oN);
 BENCHMARK(BM_ClassCB)->Range(1<<10, 1<<20)->Complexity(benchmark::oN);
+BENCHMARK(BM_two_vec)->Range(1<<10, 1<<20)->Complexity(benchmark::oN);
 
 BENCHMARK_MAIN();
