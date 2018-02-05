@@ -93,9 +93,9 @@ static void BM_radix_hash_join_raw(benchmark::State& state) {
   auto s_sorted = HashKeyValVec(s.size());
 
   ::radix_hash_bf1<std::string, uint64_t>(r.begin(), r.end(), r_sorted.begin(),
-                                          r.size(), 11, 0);
+                                          ::compute_power(r.size()), 11, 0);
   ::radix_hash_bf1<std::string, uint64_t>(s.begin(), s.end(), s_sorted.begin(),
-                                          s.size(), 11, 0);
+                                          ::compute_power(s.size()), 11, 0);
 
   for (auto _ : state) {
     for (auto r_it = r_sorted.begin(),
@@ -119,9 +119,9 @@ static void BM_radix_hash_join_df_raw(benchmark::State& state) {
   auto s_sorted = HashKeyValVec(s.size());
 
   ::radix_hash_df1<std::string, uint64_t>(r.begin(), r.end(), r_sorted.begin(),
-                                          r.size(), 11, 0);
+                                          ::compute_power(r.size()), 11, 0);
   ::radix_hash_df1<std::string, uint64_t>(s.begin(), s.end(), s_sorted.begin(),
-                                          s.size(), 11, 0);
+                                          ::compute_power(s.size()), 11, 0);
 
   for (auto _ : state) {
     for (auto r_it = r_sorted.begin(),

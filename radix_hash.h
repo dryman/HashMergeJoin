@@ -57,16 +57,16 @@ template <typename Key,
   void radix_hash_df1(BidirectionalIterator begin,
       BidirectionalIterator end,
       RandomAccessIterator dst,
-      int input_num,
-      int partition_power,
-      int nosort_power) {
-  int input_power, num_iter, shift, dst_idx, prev_idx;
-  int partitions = 1 << partition_power;
+      int mask_bits,
+      int partition_bits,
+      int nosort_bits) {
+  int input_num, num_iter, shift, dst_idx, prev_idx;
+  int partitions = 1 << partition_bits;
   std::size_t h, mask;
 
-  input_power = ::compute_power(input_num);
+  input_num = std::distance(begin, end);
 
-  if (input_power <= nosort_power) {
+  if (mask_bits <= nosort_bits) {
     for (auto iter = begin; iter != end; iter++) {
       h = Hash{}(std::get<0>(*iter));
       std::get<0>(*dst) = h;
@@ -77,10 +77,10 @@ template <typename Key,
     return;
   }
 
-  num_iter = (input_power - nosort_power
-              + partition_power - 1) / partition_power;
-  mask = ::compute_mask(input_num);
-  shift = input_power - partition_power;
+  num_iter = (mask_bits - nosort_bits
+              + partition_bits - 1) / partition_bits;
+  mask = (1ULL << mask_bits) - 1;
+  shift = mask_bits - partition_bits;
   shift = shift < 0 ? 0 : shift;
 
   // invariant: counters[partitions] is the total count
@@ -144,8 +144,8 @@ template <typename Key,
       i--;
       continue;
     }
-    mask = (1ULL << (input_power - partition_power * (i + 1))) - 1;
-    shift = input_power - partition_power * (i + 2);
+    mask = (1ULL << (mask_bits - partition_bits * (i + 1))) - 1;
+    shift = mask_bits - partition_bits * (i + 2);
     shift = shift < 0 ? 0 : shift;
 
     // clear counters
@@ -199,16 +199,16 @@ template <typename Key,
   void radix_hash_df2(BidirectionalIterator begin,
       BidirectionalIterator end,
       RandomAccessIterator dst,
-      int input_num,
-      int partition_power,
-      int nosort_power) {
-  int input_power, num_iter, shift, dst_idx, prev_idx;
-  int partitions = 1 << partition_power;
+      int mask_bits,
+      int partition_bits,
+      int nosort_bits) {
+  int input_num, num_iter, shift, dst_idx, prev_idx;
+  int partitions = 1 << partition_bits;
   std::size_t h, mask;
 
-  input_power = ::compute_power(input_num);
+  input_num = std::distance(begin, end);
 
-  if (input_power <= nosort_power) {
+  if (mask_bits <= nosort_bits) {
     for (auto iter = begin; iter != end; iter++) {
       h = Hash{}(std::get<0>(*iter));
       std::get<0>(*dst) = h;
@@ -219,10 +219,10 @@ template <typename Key,
     return;
   }
 
-  num_iter = (input_power - nosort_power
-              + partition_power - 1) / partition_power;
-  mask = (1ULL << input_power) - 1;
-  shift = input_power - partition_power;
+  num_iter = (mask_bits - nosort_bits
+              + partition_bits - 1) / partition_bits;
+  mask = (1ULL << mask_bits) - 1;
+  shift = mask_bits - partition_bits;
   shift = shift < 0 ? 0 : shift;
 
   // invariant: counters[partitions] is the total count
@@ -295,8 +295,8 @@ template <typename Key,
       i--;
       continue;
     }
-    mask = (1ULL << (input_power - partition_power * (i + 1))) - 1;
-    shift = input_power - partition_power * (i + 2);
+    mask = (1ULL << (mask_bits - partition_bits * (i + 1))) - 1;
+    shift = mask_bits - partition_bits * (i + 2);
     shift = shift < 0 ? 0 : shift;
 
     // clear counters
@@ -350,16 +350,16 @@ template <typename Key,
   void radix_hash_bf1(BidirectionalIterator begin,
       BidirectionalIterator end,
       RandomAccessIterator dst,
-      int input_num,
-      int partition_power,
-      int nosort_power) {
-  int input_power, num_iter, iter, shift, shift1, shift2, dst_idx, anchor_idx;
-  int partitions = 1 << partition_power;
+      int mask_bits,
+      int partition_bits,
+      int nosort_bits) {
+  int input_num, num_iter, iter, shift, shift1, shift2, dst_idx, anchor_idx;
+  int partitions = 1 << partition_bits;
   std::size_t h, h1, h2, h_cnt, mask, mask1, mask2, anchor_h1;
 
-  input_power = ::compute_power(input_num);
+  input_num = std::distance(begin, end);
 
-  if (input_power <= nosort_power) {
+  if (mask_bits <= nosort_bits) {
     for (auto iter = begin; iter != end; iter++) {
       h = Hash{}(std::get<0>(*iter));
       std::get<0>(*dst) = h;
@@ -370,10 +370,10 @@ template <typename Key,
     return;
   }
 
-  num_iter = (input_power - nosort_power
-              + partition_power - 1) / partition_power;
-  mask = (1ULL << input_power) - 1;
-  shift = input_power - partition_power;
+  num_iter = (mask_bits - nosort_bits
+              + partition_bits - 1) / partition_bits;
+  mask = (1ULL << mask_bits) - 1;
+  shift = mask_bits - partition_bits;
   shift = shift < 0 ? 0 : shift;
 
   // invariant: counters[partitions] is the total count
@@ -422,11 +422,11 @@ template <typename Key,
   }
 
   for (iter = 0; iter < num_iter - 2; iter++) {
-    mask1 = (1ULL << (input_power - partition_power * iter)) - 1;
-    shift1 = input_power - partition_power * (iter + 1);
+    mask1 = (1ULL << (mask_bits - partition_bits * iter)) - 1;
+    shift1 = mask_bits - partition_bits * (iter + 1);
     shift1 = shift1 < 0 ? 0 : shift1;
-    mask2 = (1ULL << (input_power - partition_power * (iter + 1))) - 1;
-    shift2 = input_power - partition_power * (iter + 2);
+    mask2 = (1ULL << (mask_bits - partition_bits * (iter + 1))) - 1;
+    shift2 = mask_bits - partition_bits * (iter + 2);
     shift2 = shift2 < 0 ? 0 : shift2;
     for (int k = 0; k < partitions; k++) {
       counters[k] = 0;
@@ -473,11 +473,11 @@ template <typename Key,
   }
 
   // flush the last buffer to dst.
-  mask1 = (1ULL << (input_power - partition_power * iter)) - 1;
-  shift1 = input_power - partition_power * (iter + 1);
+  mask1 = (1ULL << (mask_bits - partition_bits * iter)) - 1;
+  shift1 = mask_bits - partition_bits * (iter + 1);
   shift1 = shift1 < 0 ? 0 : shift1;
-  mask2 = (1ULL << (input_power - partition_power * (iter + 1))) - 1;
-  shift2 = input_power - partition_power * (iter + 2);
+  mask2 = (1ULL << (mask_bits - partition_bits * (iter + 1))) - 1;
+  shift2 = mask_bits - partition_bits * (iter + 2);
   shift2 = shift2 < 0 ? 0 : shift2;
 
   for (int k = 0; k < partitions; k++) {
@@ -507,7 +507,7 @@ template <typename Key,
         dst_idx = idx_counters[h_cnt]++;
         flush_counters[h_cnt]++;
         *(dst + dst_idx) = buffers[iter & 1][k];
-        if (nosort_power == 0) {
+        if (nosort_bits == 0) {
           for (int m = flush_counters[h_cnt]; m < counters[h_cnt]; m++) {
             if (HashTupleCmp(*(dst + dst_idx), *(dst + dst_idx - 1), mask)) {
               std::swap(*(dst + dst_idx), *(dst + dst_idx - 1));
@@ -540,7 +540,7 @@ template <typename Key,
     dst_idx = idx_counters[h_cnt]++;
     flush_counters[h_cnt]++;
     *(dst + dst_idx) = buffers[iter & 1][k];
-    if (nosort_power == 0) {
+    if (nosort_bits == 0) {
       for (int m = flush_counters[h_cnt]; m < counters[h_cnt]; m++) {
         if (HashTupleCmp(*(dst + dst_idx), *(dst + dst_idx - 1), mask)) {
           std::swap(*(dst + dst_idx), *(dst + dst_idx - 1));

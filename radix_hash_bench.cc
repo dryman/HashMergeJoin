@@ -49,7 +49,8 @@ static void BM_radix_hash_df1(benchmark::State& state) {
     {
       ::radix_hash_df1<int,int,identity_hash>(src.begin(),
                                               src.end(), dst.begin(),
-                                              size, state.range(1), 0);
+                                              ::compute_power(size),
+                                              state.range(1), 0);
     }
   state.SetComplexityN(state.range(0));
 }
@@ -67,7 +68,8 @@ static void BM_radix_hash_df2(benchmark::State& state) {
     {
       ::radix_hash_df2<int,int,identity_hash>(src.begin(),
                                               src.end(), dst.begin(),
-                                              size, state.range(1), 0);
+                                              ::compute_power(size),
+                                              state.range(1), 0);
     }
   state.SetComplexityN(state.range(0));
 }
@@ -85,7 +87,8 @@ static void BM_radix_hash_bf1(benchmark::State& state) {
     {
       ::radix_hash_bf1<int,int,identity_hash>(src.begin(),
                                               src.end(), dst.begin(),
-                                              size, state.range(1), 0);
+                                              ::compute_power(size),
+                                              state.range(1), 0);
     }
   state.SetComplexityN(state.range(0));
 }
@@ -98,7 +101,8 @@ static void BM_radix_hash_df1_str(benchmark::State& state) {
   for (auto _ : state) {
     ::radix_hash_df1<std::string,uint64_t>(src.begin(),
                                            src.end(), dst.begin(),
-                                           size, state.range(1), 0);
+                                           ::compute_power(size),
+                                           state.range(1), 0);
   }
   state.SetComplexityN(state.range(0));
 }
@@ -111,7 +115,8 @@ static void BM_radix_hash_df2_str(benchmark::State& state) {
   for (auto _ : state) {
     ::radix_hash_df2<std::string,uint64_t>(src.begin(),
                                            src.end(), dst.begin(),
-                                           size, state.range(1), 0);
+                                           ::compute_power(size),
+                                           state.range(1), 0);
   }
   state.SetComplexityN(state.range(0));
 }
@@ -124,7 +129,8 @@ static void BM_radix_hash_bf1_str(benchmark::State& state) {
   for (auto _ : state) {
     ::radix_hash_bf1<std::string,uint64_t>(src.begin(),
                                            src.end(), dst.begin(),
-                                           size, state.range(1), 0);
+                                           ::compute_power(size),
+                                           state.range(1), 0);
   }
   state.SetComplexityN(state.range(0));
 }

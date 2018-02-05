@@ -18,7 +18,7 @@ TEST(radix_hash_df1_test, no_sort) {
     src.push_back(std::make_pair(i, i));
   }
   ::radix_hash_df1<int,int,identity_hash>(src.begin(), src.end(), dst.begin(),
-                                     5, 3, 3);
+                                     3, 3, 3);
   EXPECT_EQ(4, std::get<0>(dst[0]));
   EXPECT_EQ(3, std::get<0>(dst[1]));
   EXPECT_EQ(2, std::get<0>(dst[2]));
@@ -33,7 +33,7 @@ TEST(radix_hash_df1_test, full_sort) {
     src.push_back(std::make_pair(i, i));
   }
   ::radix_hash_df1<int,int,identity_hash>(src.begin(), src.end(), dst.begin(),
-                                     5, 3, 0);
+                                     3, 3, 0);
   EXPECT_EQ(0, std::get<0>(dst[0]));
   EXPECT_EQ(1, std::get<0>(dst[1]));
   EXPECT_EQ(2, std::get<0>(dst[2]));
@@ -48,7 +48,7 @@ TEST(radix_hash_df1_test, multi_pass_sort) {
     src.push_back(std::make_pair(i, i));
   }
   ::radix_hash_df1<int,int,identity_hash>(src.begin(), src.end(), dst.begin(),
-                                     5, 1, 0);
+                                     3, 1, 0);
   EXPECT_EQ(1, std::get<0>(dst[0]));
   EXPECT_EQ(2, std::get<0>(dst[1]));
   EXPECT_EQ(3, std::get<0>(dst[2]));
@@ -63,7 +63,7 @@ TEST(radix_hash_df1_test, multi_pass_sort2) {
     src.push_back(std::make_pair(i, i));
   }
   ::radix_hash_df1<int,int,identity_hash>(src.begin(), src.end(), dst.begin(),
-                                     5, 2, 0);
+                                     3, 2, 0);
   EXPECT_EQ(1, std::get<0>(dst[0]));
   EXPECT_EQ(2, std::get<0>(dst[1]));
   EXPECT_EQ(3, std::get<0>(dst[2]));
@@ -93,7 +93,7 @@ TEST(radix_hash_df1_test, multi_pass_large_num) {
     src.push_back(std::make_pair(i, i));
   }
   ::radix_hash_df1<int,int,identity_hash>(src.begin(), src.end(), dst.begin(),
-                                     12345, 1, 0);
+                                     14, 1, 0);
   for (int i = 0; i < 12345; i++) {
     EXPECT_EQ(i + 1, std::get<0>(dst[i]));
   }
@@ -106,7 +106,7 @@ TEST(radix_hash_df1_test, multi_pass_large_num2) {
     src.push_back(std::make_pair(i, i));
   }
   ::radix_hash_df1<int,int,identity_hash>(src.begin(), src.end(), dst.begin(),
-                                     12345, 5, 0);
+                                     14, 5, 0);
   for (int i = 0; i < 12345; i++) {
     EXPECT_EQ(i + 1, std::get<0>(dst[i]));
   }
@@ -120,7 +120,7 @@ TEST(radix_hash_df2_test, no_sort) {
     src.push_back(std::make_pair(i, i));
   }
   ::radix_hash_df2<int,int,identity_hash>(src.begin(), src.end(), dst.begin(),
-                                     5, 3, 3);
+                                     3, 3, 3);
   EXPECT_EQ(4, std::get<0>(dst[0]));
   EXPECT_EQ(3, std::get<0>(dst[1]));
   EXPECT_EQ(2, std::get<0>(dst[2]));
@@ -135,7 +135,7 @@ TEST(radix_hash_df2_test, full_sort) {
     src.push_back(std::make_pair(i, i));
   }
   ::radix_hash_df2<int,int,identity_hash>(src.begin(), src.end(), dst.begin(),
-                                     5, 3, 0);
+                                     3, 3, 0);
   EXPECT_EQ(0, std::get<0>(dst[0]));
   EXPECT_EQ(1, std::get<0>(dst[1]));
   EXPECT_EQ(2, std::get<0>(dst[2]));
@@ -150,7 +150,7 @@ TEST(radix_hash_df2_test, multi_pass_sort) {
     src.push_back(std::make_pair(i, i));
   }
   ::radix_hash_df2<int,int,identity_hash>(src.begin(), src.end(), dst.begin(),
-                                     5, 1, 0);
+                                     3, 1, 0);
   EXPECT_EQ(1, std::get<0>(dst[0]));
   EXPECT_EQ(2, std::get<0>(dst[1]));
   EXPECT_EQ(3, std::get<0>(dst[2]));
@@ -165,7 +165,7 @@ TEST(radix_hash_df2_test, multi_pass_sort2) {
     src.push_back(std::make_pair(i, i));
   }
   ::radix_hash_df2<int,int,identity_hash>(src.begin(), src.end(), dst.begin(),
-                                     5, 2, 0);
+                                     3, 2, 0);
   EXPECT_EQ(1, std::get<0>(dst[0]));
   EXPECT_EQ(2, std::get<0>(dst[1]));
   EXPECT_EQ(3, std::get<0>(dst[2]));
@@ -180,7 +180,7 @@ TEST(radix_hash_df2_test, multi_pass_nosort_last) {
     src.push_back(std::make_pair(i, i));
   }
   ::radix_hash_df2<int,int,identity_hash>(src.begin(), src.end(), dst.begin(),
-                                     5, 1, 1);
+                                     3, 1, 1);
   EXPECT_EQ(1, std::get<0>(dst[0]));
   EXPECT_EQ(3, std::get<0>(dst[1]));
   EXPECT_EQ(2, std::get<0>(dst[2]));
@@ -195,7 +195,7 @@ TEST(radix_hash_df2_test, multi_pass_large_num) {
     src.push_back(std::make_pair(i, i));
   }
   ::radix_hash_df2<int,int,identity_hash>(src.begin(), src.end(), dst.begin(),
-                                     12345, 1, 0);
+                                     14, 1, 0);
   for (int i = 0; i < 12345; i++) {
     EXPECT_EQ(i + 1, std::get<0>(dst[i]));
   }
@@ -208,7 +208,7 @@ TEST(radix_hash_df2_test, multi_pass_large_num2) {
     src.push_back(std::make_pair(i, i));
   }
   ::radix_hash_df2<int,int,identity_hash>(src.begin(), src.end(), dst.begin(),
-                                     12345, 5, 0);
+                                     14, 5, 0);
   for (int i = 0; i < 12345; i++) {
     EXPECT_EQ(i + 1, std::get<0>(dst[i]));
   }
@@ -223,7 +223,7 @@ TEST(radix_hash_bf1_test, no_sort) {
     src.push_back(std::make_pair(i, i));
   }
   ::radix_hash_bf1<int,int,identity_hash>(src.begin(), src.end(), dst.begin(),
-                                     5, 3, 3);
+                                     3, 3, 3);
   EXPECT_EQ(4, std::get<0>(dst[0]));
   EXPECT_EQ(3, std::get<0>(dst[1]));
   EXPECT_EQ(2, std::get<0>(dst[2]));
@@ -238,7 +238,7 @@ TEST(radix_hash_bf1_test, full_sort) {
     src.push_back(std::make_pair(i, i));
   }
   ::radix_hash_bf1<int,int,identity_hash>(src.begin(), src.end(), dst.begin(),
-                                     5, 3, 0);
+                                     3, 3, 0);
   EXPECT_EQ(0, std::get<0>(dst[0]));
   EXPECT_EQ(1, std::get<0>(dst[1]));
   EXPECT_EQ(2, std::get<0>(dst[2]));
@@ -253,7 +253,7 @@ TEST(radix_hash_bf1_test, multi_pass_sort) {
     src.push_back(std::make_pair(i, i));
   }
   ::radix_hash_bf1<int,int,identity_hash>(src.begin(), src.end(), dst.begin(),
-                                     5, 1, 0);
+                                     3, 1, 0);
   EXPECT_EQ(1, std::get<0>(dst[0]));
   EXPECT_EQ(2, std::get<0>(dst[1]));
   EXPECT_EQ(3, std::get<0>(dst[2]));
@@ -268,7 +268,7 @@ TEST(radix_hash_bf1_test, multi_pass_sort2) {
     src.push_back(std::make_pair(i, i));
   }
   ::radix_hash_bf1<int,int,identity_hash>(src.begin(), src.end(), dst.begin(),
-                                     5, 2, 0);
+                                     3, 2, 0);
   EXPECT_EQ(1, std::get<0>(dst[0]));
   EXPECT_EQ(2, std::get<0>(dst[1]));
   EXPECT_EQ(3, std::get<0>(dst[2]));
@@ -283,7 +283,7 @@ TEST(radix_hash_bf1_test, multi_pass_nosort_last) {
     src.push_back(std::make_pair(i, i));
   }
   ::radix_hash_bf1<int,int,identity_hash>(src.begin(), src.end(), dst.begin(),
-                                     5, 1, 1);
+                                     3, 1, 1);
   EXPECT_EQ(1, std::get<0>(dst[0]));
   EXPECT_EQ(3, std::get<0>(dst[1]));
   EXPECT_EQ(2, std::get<0>(dst[2]));
@@ -298,7 +298,7 @@ TEST(radix_hash_bf1_test, multi_pass_large_num) {
     src.push_back(std::make_pair(i, i));
   }
   ::radix_hash_bf1<int,int,identity_hash>(src.begin(), src.end(), dst.begin(),
-                                     12345, 1, 0);
+                                     14, 1, 0);
   for (int i = 0; i < 12345; i++) {
     EXPECT_EQ(i + 1, std::get<0>(dst[i]));
   }
@@ -311,7 +311,7 @@ TEST(radix_hash_bf1_test, multi_pass_large_num2) {
     src.push_back(std::make_pair(i, i));
   }
   ::radix_hash_bf1<int,int,identity_hash>(src.begin(), src.end(), dst.begin(),
-                                     12345, 5, 0);
+                                     14, 5, 0);
   for (int i = 0; i < 12345; i++) {
     EXPECT_EQ(i + 1, std::get<0>(dst[i]));
   }
