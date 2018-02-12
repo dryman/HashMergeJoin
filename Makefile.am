@@ -41,3 +41,17 @@ hashjoin_bench_LDFLAGS = -lbenchmark
 callback_bench_SOURCES = callback_bench.cc strgen.cc
 callback_bench_CXXFLAGS = -std=c++14
 callback_bench_LDFLAGS = -lbenchmark
+
+analyze_hashjoin_srcs = $(hashjoin_bench_SOURCES)
+analyze_hashjoin_plists = $(analyze_hashjoin_srcs:%.cc=%.plist)
+MOSTLYCLEANFILES = $(analyze_hashjoin_plists)
+
+$(analyze_hashjoin_plists):	%.plist: %.cc
+	@echo "  CCSA  " $@
+	$(CXX) --analyze -std=c++14 $< -o $@
+
+all-local:	$(analyze_hashjoin_plists)
+
+analyze:	$(analyze_hashjoin_plists)
+
+.PHONY:	analyze
