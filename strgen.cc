@@ -26,6 +26,7 @@ create_strvec(const int number) {
     getline(fs, p.first);
     pairs.push_back(p);
   }
+  fs.close();
 
   for (int i = 0; i < sqrt_num; i++) {
     for (int j = 0; j < sqrt_num; j++) {
@@ -35,23 +36,10 @@ create_strvec(const int number) {
         return pairs;
       }
       std::pair<std::string, uint64_t> p;
-      p.first = pairs[i].first + pairs[j].first;
+      p.first = pairs[i].first + "-" + pairs[j].first;
       p.second = i + j;
-      pairs.push_back(p);
+      pairs.push_back(std::move(p));
     }
   }
   assert(0);
 }
-
-/*
-static void BM_genstr(benchmark::State& state) {
-  for (auto _ : state) {
-    auto v = create_strvec(state.range(0));
-    v[0].second = 5;
-    assert(v.size() == state.range(0));
-  }
-}
-
-BENCHMARK(BM_genstr)->Arg(65536)->Arg(1000000)->Arg(4000000);
-BENCHMARK_MAIN();
-*/
