@@ -189,13 +189,15 @@ static void BM_HashMergeJoinSimpleThread(benchmark::State& state) {
 //BENCHMARK(BM_single_table_join)->Range(1<<10, 1<<18)->Complexity(benchmark::oN);
 //BENCHMARK(BM_radix_hash_table_join)->Range(1<<10, 1<<18)->Complexity(benchmark::oN);
 //BENCHMARK(BM_radix_hash_join)->Range(1<<10, 1<<18)->Complexity(benchmark::oN);
-BENCHMARK(BM_hash_join_raw)->Range(1<<10, 1<<20)->Complexity(benchmark::oN);
+BENCHMARK(BM_hash_join_raw)->Range(1<<10, 1<<20)->Complexity(benchmark::oN)
+->UseRealTime();
 // BENCHMARK(BM_hash_join_raw_orderd)->Range(1<<10, 1<<23)->Complexity(benchmark::oN);
 // BENCHMARK(BM_radix_hash_join_raw)->Range(1<<10, 1<<18)->Complexity(benchmark::oN);
 // BENCHMARK(BM_radix_hash_join_df_raw)->Range(1<<10, 1<<18)->Complexity(benchmark::oN);
 // BENCHMARK(BM_radix_hash_join_templated)->Range(1<<10, 1<<18)->Complexity(benchmark::oN);
-BENCHMARK(BM_HashMergeJoin)->Range(1<<10, 1<<20)->Complexity(benchmark::oN);
+BENCHMARK(BM_HashMergeJoin)->Range(1<<10, 1<<20)->Complexity(benchmark::oN)
+->UseRealTime();
 BENCHMARK(BM_HashMergeJoinSimpleThread)->
-Range(1<<10, 1<<20)->Complexity(benchmark::oN);
+Range(1<<10, 1<<20)->Complexity(benchmark::oN)->UseRealTime();
 
 BENCHMARK_MAIN();
