@@ -381,7 +381,7 @@ template <typename Key,
   int flush_counters[partitions];
   int idx_counters[partitions];
 
-  for (int i = 0; i < partitions + 1; i++)
+  for (int i = 0; i < partitions; i++)
     counters[i] = 0;
 
   std::unique_ptr<std::tuple<std::size_t, Key, Value>[]> buffers[2];

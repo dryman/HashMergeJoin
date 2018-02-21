@@ -1,3 +1,5 @@
+AUTOMAKE_OPTIONS = subdir-objects
+
 ACLOCAL_AMFLAGS=-I m4
 #SUBDIRS = googletest
 TESTS = radix_hash_test leak_check strgen_test
@@ -34,7 +36,9 @@ radix_hash_bench_SOURCES = radix_hash_bench.cc strgen.cc
 radix_hash_bench_CXXFLAGS = -std=c++14
 radix_hash_bench_LDFLAGS = -lbenchmark
 
-hashjoin_bench_SOURCES = hashjoin_bench.cc hashjoin.cc strgen.cc
+hashjoin_bench_SOURCES = hashjoin_bench.cc hashjoin.cc strgen.cc \
+						 DarwinPthreadBarrier/src/pthread_barrier.c
+hashjoin_bench_CPPFLAGS = -isystem DarwinPthreadBarrier/src
 hashjoin_bench_CXXFLAGS = -std=c++14
 hashjoin_bench_LDFLAGS = -lbenchmark
 
