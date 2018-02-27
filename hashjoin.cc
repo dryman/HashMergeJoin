@@ -27,7 +27,7 @@ void radix_hash_table_join(KeyValVec r, KeyValVec s,
     s_map[s_kv.first] = s_kv.second;
   }
   ::radix_hash_bf1<std::string, uint64_t>(r.begin(), r.end(), r_sorted.begin(),
-                                          r.size(), 11, 0);
+                                          ::compute_power(r.size()), 11, 0);
 
   for (auto r_it : r_sorted) {
     callback(std::get<1>(r_it), std::get<2>(r_it),
@@ -43,9 +43,9 @@ void radix_hash_join(KeyValVec r, KeyValVec s,
   auto s_sorted = HashKeyValVec(s.size());
 
   ::radix_hash_bf1<std::string, uint64_t>(r.begin(), r.end(), r_sorted.begin(),
-                                          r.size(), 11, 0);
+                                          ::compute_power(r.size()), 11, 0);
   ::radix_hash_bf1<std::string, uint64_t>(s.begin(), s.end(), s_sorted.begin(),
-                                          s.size(), 11, 0);
+                                          ::compute_power(s.size()), 11, 0);
 
   for (auto r_it = r_sorted.begin(),
          s_it = s_sorted.begin();
