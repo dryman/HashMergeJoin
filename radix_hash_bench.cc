@@ -93,6 +93,25 @@ static void BM_radix_hash_bf1(benchmark::State& state) {
   state.SetComplexityN(state.range(0));
 }
 
+static void BM_radix_hash_bf2(benchmark::State& state) {
+  int size = state.range(0);
+  std::vector<std::pair<int, int>> src;
+  std::vector<std::tuple<std::size_t, int, int>> dst(size);
+
+  for (int i = size; i > 0; i--) {
+    src.push_back(std::make_pair(i, i));
+  }
+
+  for (auto _ : state)
+    {
+      ::radix_hash_bf2<int,int,identity_hash>(src.begin(),
+                                              src.end(), dst.begin(),
+                                              ::compute_power(size),
+                                              state.range(1), 0);
+    }
+  state.SetComplexityN(state.range(0));
+}
+
 static void BM_radix_hash_df1_str(benchmark::State& state) {
   int size = state.range(0);
   std::vector<std::tuple<std::size_t, std::string, uint64_t>> dst(size);
@@ -135,6 +154,19 @@ static void BM_radix_hash_bf1_str(benchmark::State& state) {
   state.SetComplexityN(state.range(0));
 }
 
+static void BM_radix_hash_bf2_str(benchmark::State& state) {
+  int size = state.range(0);
+  std::vector<std::tuple<std::size_t, std::string, uint64_t>> dst(size);
+  auto src = ::create_strvec(size);
+
+  for (auto _ : state) {
+    ::radix_hash_bf2<std::string,uint64_t>(src.begin(),
+                                           src.end(), dst.begin(),
+                                           ::compute_power(size),
+                                           state.range(1), 0);
+  }
+  state.SetComplexityN(state.range(0));
+}
 
 static void RadixArguments(benchmark::internal::Benchmark* b) {
   for (int i = 10; i < 13; i+=1) {
@@ -149,13 +181,15 @@ static void RadixArguments(benchmark::internal::Benchmark* b) {
  * input is small. For very large input, depth first wins a little bit.
  */
 
-BENCHMARK(BM_qsort)->Range(1 << 10, 1 << 18)->Complexity();
-BENCHMARK(BM_radix_hash_df1)->Apply(RadixArguments)->Complexity();
-BENCHMARK(BM_radix_hash_df2)->Apply(RadixArguments)->Complexity();
-BENCHMARK(BM_radix_hash_bf1)->Apply(RadixArguments)->Complexity();
-
-BENCHMARK(BM_radix_hash_df1_str)->Apply(RadixArguments)->Complexity();
-BENCHMARK(BM_radix_hash_df2_str)->Apply(RadixArguments)->Complexity();
-BENCHMARK(BM_radix_hash_bf1_str)->Apply(RadixArguments)->Complexity();
+//BENCHMARK(BM_qsort)->Range(1 << 10, 1 << 18)->Complexity();
+//BENCHMARK(BM_radix_hash_df1)->Apply(RadixArguments)->Complexity();
+//BENCHMARK(BM_radix_hash_df2)->Apply(RadixArguments)->Complexity();
+//BENCHMARK(BM_radix_hash_bf1)->Apply(RadixArguments)->Complexity();
+// BENCHMARK(BM_radix_hash_bf2)->Apply(RadixArguments)->Complexity();
+//
+//BENCHMARK(BM_radix_hash_df1_str)->Apply(RadixArguments)->Complexity();
+//BENCHMARK(BM_radix_hash_df2_str)->Apply(RadixArguments)->Complexity();
+//BENCHMARK(BM_radix_hash_bf1_str)->Apply(RadixArguments)->Complexity();
+BENCHMARK(BM_radix_hash_bf2_str)->Apply(RadixArguments)->Complexity();
 
 BENCHMARK_MAIN();

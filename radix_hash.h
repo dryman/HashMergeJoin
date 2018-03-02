@@ -7,6 +7,7 @@
 #include <vector>
 #include <functional>
 #include <sys/mman.h>
+#include <assert.h>
 
 // namespace radix_hash?
 
@@ -570,16 +571,108 @@ template <typename Key,
   }
 }
 
-struct RadixCounter {
-  enum Status {
-    ToFill,
-    Normal,
-    End,
-  };
-  int idx = 0;
-  int end = 0;
-  Status status = Normal;
-};
+template <typename Key,
+  typename Value,
+  typename RandomAccessIterator>
+  void bf2_helper(RandomAccessIterator begin,
+                  RandomAccessIterator end,
+                  int mask_bits,
+                  int partition_bits,
+                  int nosort_bits) {
+  std::tuple<std::size_t, Key, Value> tmp_bucket;
+  uint64_t h, mask;
+  //std::size_t h, mask;
+  unsigned int partitions, shift, idx_i, idx_j;
+  int new_mask_bits;
+
+  std::cout << "mask_bits: " << mask_bits << "\n";
+  if (mask_bits <= 0) {
+    assert(0);
+  }
+
+  partitions = 1 << partition_bits;
+  mask = (1ULL << mask_bits) - 1ULL;
+  shift = mask_bits < partition_bits ? 0 : mask_bits - partition_bits;
+
+  int counters[partitions];
+  int indexes[partitions][2];
+
+  for (int i = 0; i < partitions; i++)
+    counters[i] = 0;
+  indexes[0][0] = 0;
+
+  //  std::cout << "bf2_helper mask: " << mask << " shift: "
+  //            << shift << " before: ";
+  for (auto iter = begin; iter != end; ++iter) {
+    h = std::get<0>(*iter);
+    unsigned int counter_idx = (h & mask) >> shift;
+    if (counter_idx >= partitions) {
+      std::cout << "mask_bits: " << mask_bits
+                << " partition_bits: " << partition_bits
+                << " shift: " << shift
+                << " h: " << h
+                << " counter_idx: " << counter_idx
+                << " partitions: " << partitions << "\n";
+      assert(0);
+    }
+    //assert(counter_idx >= 0);
+    //assert(counter_idx < partitions);
+    counters[counter_idx]++;
+    //std::cout << std::get<0>(*iter) << "[" << counter_idx << "], ";
+  }
+  //std::cout << "\nindexes: ";
+  for (int i = 0; i < partitions - 1; i++) {
+    indexes[i][1] = indexes[i+1][0] = indexes[i][0] + counters[i];
+  }
+  indexes[partitions-1][1] = indexes[partitions-1][0] + counters[partitions-1];
+  //for (int i = 0; i < partitions; i++) {
+  //  std::cout << "[" << indexes[i][0] << "," << indexes[i][1] << "], ";
+  //}
+  //std::cout << "\n";
+  int i = 0;
+  while (i < partitions) {
+    idx_i = indexes[i][0];
+    if (idx_i >= indexes[i][1]) {
+      i++;
+      continue;
+    }
+    tmp_bucket = begin[idx_i];
+    do {
+      h = std::get<0>(tmp_bucket);
+      idx_j = indexes[(h & mask) >> shift][0]++;
+      std::swap(begin[idx_j], tmp_bucket);
+    } while (idx_j > idx_i);
+  }
+
+  //  std::cout << "bf2_helper after: ";
+  //  for (auto iter = begin; iter != end; ++iter) {
+  //    std::cout << std::get<1>(*iter) << ", ";
+  //  }
+  //  std::cout << "indexes: ";
+  //  for (int i = 0; i < partitions; i++) {
+  //    std::cout << "[" << indexes[i][0] << "," << indexes[i][1] << "], ";
+  //  }
+  //  std::cout << "\n";
+
+  new_mask_bits = mask_bits - partition_bits;
+  if (new_mask_bits <= nosort_bits)
+    return;
+  std::cout << "new_mask_bits: " << new_mask_bits << "\n";
+  assert(new_mask_bits > 0);
+
+  if (indexes[0][0] > 1) {
+    bf2_helper<Key, Value, RandomAccessIterator>
+      (begin, begin + indexes[0][0],
+       new_mask_bits, partition_bits, nosort_bits);
+  }
+  for (int i = 1; i < partitions; i++) {
+    if (indexes[i-1][0] + 1 >= indexes[i][0])
+      continue;
+    bf2_helper<Key, Value, RandomAccessIterator>
+      (begin + indexes[i-1][0], begin + indexes[i][0],
+       new_mask_bits, partition_bits, nosort_bits);
+  }
+}
 
 template <typename Key,
   typename Value,
@@ -594,7 +687,8 @@ template <typename Key,
       int nosort_bits) {
   int input_num, num_iter, iter, shift, shift1, shift2, dst_idx, anchor_idx;
   int partitions = 1 << partition_bits;
-  std::size_t h, h1, h2, h_cnt, mask, mask1, mask2, anchor_h1;
+  std::size_t h, mask;
+  int new_mask_bits;
 
   input_num = std::distance(begin, end);
 
@@ -617,9 +711,6 @@ template <typename Key,
 
   // invariant: counters[partitions] is the total count
   int counters[partitions];
-  int flush_counters[partitions];
-  int idx_counters[partitions];
-  std::vector<RadixCounter> radix_counter(partitions);
 
   for (int i = 0; i < partitions + 1; i++)
     counters[i] = 0;
@@ -640,81 +731,28 @@ template <typename Key,
     h = Hash{}(std::get<0>(*iter));
     dst_idx = counters[(h & mask) >> shift]++;
     std::get<0>(dst[dst_idx]) = h;
-    std::get<1>(dst[dst_idx]) = std::move(iter->first);
-    std::get<2>(dst[dst_idx]) = std::move(iter->second);
+    //std::get<1>(dst[dst_idx]) = std::move(iter->first);
+    //std::get<2>(dst[dst_idx]) = std::move(iter->second);
+    std::get<1>(dst[dst_idx]) = iter->first;
+    std::get<2>(dst[dst_idx]) = iter->second;
   }
 
-  for (iter = 0; iter < num_iter - 1; iter++) {
-    mask1 = (1ULL << (mask_bits - partition_bits * iter)) - 1;
-    shift1 = mask_bits - partition_bits * (iter + 1);
-    shift1 = shift1 < 0 ? 0 : shift1;
-    mask2 = (1ULL << (mask_bits - partition_bits * (iter + 1))) - 1;
-    shift2 = mask_bits - partition_bits * (iter + 2);
-    shift2 = shift2 < 0 ? 0 : shift2;
-    for (int k = 0; k < partitions; k++) {
-      counters[k] = 0;
-    }
-    anchor_h1 = (std::get<0>(dst[0]) & mask1) >> shift1;
-    anchor_idx = 0;
+  new_mask_bits = mask_bits - partition_bits;
+  if (new_mask_bits <= nosort_bits)
+    return;
 
-    for (int j = 0; j < input_num; j++) {
-      h = std::get<0>(dst[j]);
-      h1 = (h & mask1) >> shift1;
-      h2 = (h & mask2) >> shift2;
-      if (h1 == anchor_h1) {
-        counters[h2]++;
-      } else {
-        // flush counters
-        for (int k = 0; k < partitions; k++) {
-          flush_counters[k] = 0;
-        }
-        radix_counter[0] = {anchor_idx, anchor_idx + counters[0],
-                            RadixCounter::Status::Normal};
-        for (unsigned int k = 1; k < partitions; k++) {
-          int prev_end = radix_counter[k - 1].end;
-          radix_counter[k] = {prev_end, prev_end + counters[k],
-                              RadixCounter::Status::Normal};
-        }
-        int ctr = 0;
-        std::tuple<std::size_t, Key, Value> tmp;
-        while (ctr < partitions) {
-          if (radix_counter[ctr].idx == radix_counter[ctr].end) {
-            ctr++;
-            continue;
-          }
-
-        }
-        
-        /*
-        for (int k = anchor_idx; k < j; k++) {
-          h = std::get<0>(buffers[iter & 1][k]);
-          buffers[(iter + 1) & 1][idx_counters[(h & mask2) >> shift2]++] =
-            std::move(buffers[iter & 1][k]);
-        }
-        */
-        // clear up counters and reset anchor
-        for (int k = 0; k < partitions; k++) {
-          counters[k] = 0;
-        }
-        anchor_idx = j;
-        anchor_h1 = h1;
-        counters[h2]++;
-      }
-    }
-    // flush counters
-    /*
-    idx_counters[0] = anchor_idx;
-    for (unsigned int k = 1; k < partitions; k++) {
-      idx_counters[k] = idx_counters[k-1] + counters[k-1];
-    }
-    for (int k = anchor_idx; k < input_num; k++) {
-      h = std::get<0>(buffers[iter & 1][k]);
-      buffers[(iter + 1) & 1][idx_counters[(h & mask2) >> shift2]++] =
-      std::move(buffers[iter & 1][k]);
-    }
-    */
+  if (counters[0] > 0) {
+    bf2_helper<Key, Value, RandomAccessIterator>
+      (dst, dst + counters[0], new_mask_bits, partition_bits, nosort_bits);
   }
 
+  for (int i = 1; i < partitions; i++) {
+    if (counters[i-1] == counters[i])
+      continue;
+    bf2_helper<Key, Value, RandomAccessIterator>
+      (dst + counters[i-1], dst + counters[i],
+       new_mask_bits, partition_bits, nosort_bits);
+  }
 }
 
 #endif
