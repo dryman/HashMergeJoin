@@ -92,8 +92,11 @@ class HashMergeJoin {
                                  mask_bits, 11, 0);
     ::radix_hash_bf1<Key, SValue>(s_begin, s_end, s_sorted.begin(),
                                  mask_bits, 11, 0);
-    mask = (1ULL << mask_bits) - 1;
-    HashMergeJoin(mask, r_sorted, s_sorted);
+    std::cout << "rs size before whole setup: " << r_sorted.size() << "\n";
+    _mask = (1ULL << mask_bits) - 1;
+    _r_sorted = r_sorted;
+    _s_sorted = s_sorted;
+    //HashMergeJoin(mask, r_sorted, s_sorted);
   }
 
   class iterator : std::iterator<std::input_iterator_tag,
@@ -105,6 +108,8 @@ class HashMergeJoin {
     _mask(mask), _rs_iter(rs_iter), _rs_end(rs_end),
       _ss_iter(ss_iter), _ss_end(ss_end) {
       std::size_t r_hash, s_hash;
+      //std::cout << "rs distance: " << std::distance(_rs_iter, rs_end) << "\n";
+      //std::cout << _rs_iter << _rs_end;
       while (_rs_iter != _rs_end) {
         if (_ss_iter == _ss_end) {
           _rs_iter = _rs_end;
@@ -189,7 +194,11 @@ class HashMergeJoin {
       }
       ++_rs_iter;
       ++_ss_iter;
-      while (_rs_iter != _rs_end) {
+      while (true) {
+        if (_rs_iter == _rs_end) {
+          _ss_iter = _ss_end;
+          break;
+        }
         if (_ss_iter == _ss_end) {
           _rs_iter = _rs_end;
           break;
@@ -234,11 +243,11 @@ class HashMergeJoin {
     }
     bool operator==(iterator other) const {
       return _rs_iter == other._rs_iter &&
-      _ss_iter == other._ss_iter &&
-      _ss_dupcnt == other._ss_dupcnt;
+      _ss_iter == other._ss_iter;
+      //_ss_dupcnt == other._ss_dupcnt;
     }
     bool operator!=(iterator other) const {
-      return !(*this == other);
+      return _rs_iter != other._rs_iter || _ss_iter != other._ss_iter;
     }
     std::tuple<Key*, RValue*, SValue*>& operator*() {
       tmp_val = std::make_tuple(&std::get<1>(*_rs_iter),
@@ -258,9 +267,10 @@ class HashMergeJoin {
 
  public:
   iterator begin() {
+    std::cout << "rs size: " << _r_sorted.size() << "\n";
     return iterator(_mask,
-                    _r_sorted.begin(), _r_sorted.end(),
-                    _s_sorted.begin(), _s_sorted.end());
+                    _r_sorted.end(), _r_sorted.end(),
+                    _s_sorted.end(), _s_sorted.end());
   }
 
   iterator end() {
@@ -316,10 +326,13 @@ template<typename RIter, typename SIter>
                          std::hash<Key>, SIter, SSortedIter>,
                          s_begin, s_end, s_sorted.begin(),
                          mask_bits, 11, 0);
-    mask = (1ULL << mask_bits) - 1;
+    //mask = (1ULL << mask_bits) - 1;
     r_thread.join();
     s_thread.join();
-    HashMergeJoin<RIter,SIter>(mask, r_sorted, s_sorted);
+    //HashMergeJoin<RIter,SIter>(mask, r_sorted, s_sorted);
+    HashMergeJoin<RIter,SIter>::_mask = (1ULL << mask_bits) - 1;
+    HashMergeJoin<RIter,SIter>::_r_sorted = r_sorted;
+    HashMergeJoin<RIter,SIter>::_s_sorted = s_sorted;
   }
 };
 

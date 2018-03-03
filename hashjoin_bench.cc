@@ -4,6 +4,7 @@
 #include "radix_hash.h"
 #include "hashjoin.h"
 #include "strgen.h"
+#include <assert.h>
 
 static void BM_single_table_join(benchmark::State& state) {
   int size = state.range(0);
@@ -157,15 +158,21 @@ static void BM_HashMergeJoin(benchmark::State& state) {
   uint64_t sum = 0;
   auto r = ::create_strvec(size);
   auto s = ::create_strvec(size);
+  int counter;
   for (auto _ : state) {
     //std::cout << "hmj built\n";
     auto hmj = HashMergeJoin<KeyValVec::iterator,
                              KeyValVec::iterator>(r.begin(), r.end(),
                                                   s.begin(), s.end());
+    counter = 0;
     for (auto tuple : hmj) {
       sum += *std::get<1>(tuple) + *std::get<2>(tuple);
+      counter++;
+      //std::cout << "counter: " << counter << "\n";
       //sum += *std::get<1>(tuple);
     }
+    std::cout << "counter: " << counter << "\n";
+    //assert(counter == size);
   }
   state.SetComplexityN(state.range(0));
 }
@@ -186,21 +193,19 @@ static void BM_HashMergeJoinSimpleThread(benchmark::State& state) {
   state.SetComplexityN(state.range(0));
 }
 
-// BENCHMARK(BM_single_table_join)->Range(1<<10, 1<<18)
-// ->Complexity(benchmark::oN)->UseRealTime();
-// BENCHMARK(BM_radix_hash_table_join)->Range(1<<10, 1<<18)
-// ->Complexity(benchmark::oN)->UseRealTime();
+//BENCHMARK(BM_single_table_join)->Range(1<<10, 1<<18)->Complexity(benchmark::oN);
+//BENCHMARK(BM_radix_hash_table_join)->Range(1<<10, 1<<18)->Complexity(benchmark::oN);
 //BENCHMARK(BM_radix_hash_join)->Range(1<<10, 1<<18)->Complexity(benchmark::oN);
-BENCHMARK(BM_hash_join_raw)->Range(1<<10, 1<<20)->Complexity(benchmark::oN)
-->UseRealTime();
-// BENCHMARK(BM_hash_join_raw_orderd)->Range(1<<10, 1<<20)
-// ->Complexity(benchmark::oN)->UseRealTime();
-//BENCHMARK(BM_radix_hash_join_raw)->Range(1<<10, 1<<18)->Complexity(benchmark::oN);
-//BENCHMARK(BM_radix_hash_join_df_raw)->Range(1<<10, 1<<18)->Complexity(benchmark::oN);
+//BENCHMARK(BM_hash_join_raw)->Range(1<<18, 1<<23)->Complexity(benchmark::oN)
+//->UseRealTime();
+// BENCHMARK(BM_hash_join_raw_orderd)->Range(1<<10, 1<<23)->Complexity(benchmark::oN);
+// BENCHMARK(BM_radix_hash_join_raw)->Range(1<<10, 1<<18)->Complexity(benchmark::oN);
+// BENCHMARK(BM_radix_hash_join_df_raw)->Range(1<<10, 1<<23)
+// ->Complexity(benchmark::oN);
 // BENCHMARK(BM_radix_hash_join_templated)->Range(1<<10, 1<<18)->Complexity(benchmark::oN);
-BENCHMARK(BM_HashMergeJoin)->Range(1<<10, 1<<20)->Complexity(benchmark::oN)
+BENCHMARK(BM_HashMergeJoin)->Range(1<<18, 1<<23)->Complexity(benchmark::oN)
 ->UseRealTime();
-BENCHMARK(BM_HashMergeJoinSimpleThread)->
-Range(1<<10, 1<<20)->Complexity(benchmark::oN)->UseRealTime();
+//BENCHMARK(BM_HashMergeJoinSimpleThread)->
+//Range(1<<10, 1<<23)->Complexity(benchmark::oN)->UseRealTime();
 
 BENCHMARK_MAIN();

@@ -6,6 +6,8 @@
 #include <utility>
 #include <vector>
 #include <functional>
+#include <sys/mman.h>
+#include <assert.h>
 
 // namespace radix_hash?
 
@@ -390,6 +392,17 @@ template <typename Key,
   buffers[1] = std::make_unique<
   std::tuple<std::size_t, Key, Value>[]>(input_num);
 
+  /*
+  madvise(&*begin, input_num * (sizeof(begin->first) + sizeof(begin->second)),
+          MADV_SEQUENTIAL);
+  madvise(&buffers[0], input_num *
+          (sizeof(begin->first) + sizeof(begin->second) + sizeof(std::size_t)),
+          MADV_SEQUENTIAL);
+  madvise(&buffers[1], input_num *
+          (sizeof(begin->first) + sizeof(begin->second) + sizeof(std::size_t)),
+          MADV_SEQUENTIAL);
+  */
+
   for (auto iter = begin; iter != end; ++iter) {
     h = Hash{}(std::get<0>(*iter));
     counters[(h & mask) >> shift]++;
@@ -407,8 +420,8 @@ template <typename Key,
       h = Hash{}(std::get<0>(*iter));
       dst_idx = counters[(h & mask) >> shift]++;
       std::get<0>(dst[dst_idx]) = h;
-      std::get<1>(dst[dst_idx]) = iter->first;
-      std::get<2>(dst[dst_idx]) = iter->second;
+      std::get<1>(dst[dst_idx]) = std::move(iter->first);
+      std::get<2>(dst[dst_idx]) = std::move(iter->second);
     }
     return;
   } else {
@@ -416,10 +429,13 @@ template <typename Key,
       h = Hash{}(std::get<0>(*iter));
       dst_idx = counters[(h & mask) >> shift]++;
       std::get<0>(buffers[0][dst_idx]) = h;
-      std::get<1>(buffers[0][dst_idx]) = iter->first;
-      std::get<2>(buffers[0][dst_idx]) = iter->second;
+      std::get<1>(buffers[0][dst_idx]) = std::move(iter->first);
+      std::get<2>(buffers[0][dst_idx]) = std::move(iter->second);
     }
   }
+
+  madvise(&*begin, input_num * (sizeof(begin->first) + sizeof(begin->second)),
+          MADV_DONTNEED);
 
   for (iter = 0; iter < num_iter - 2; iter++) {
     mask1 = (1ULL << (mask_bits - partition_bits * iter)) - 1;
@@ -449,7 +465,7 @@ template <typename Key,
         for (int k = anchor_idx; k < j; k++) {
           h = std::get<0>(buffers[iter & 1][k]);
           buffers[(iter + 1) & 1][idx_counters[(h & mask2) >> shift2]++] =
-          buffers[iter & 1][k];
+            std::move(buffers[iter & 1][k]);
         }
         // clear up counters and reset anchor
         for (int k = 0; k < partitions; k++) {
@@ -468,9 +484,13 @@ template <typename Key,
     for (int k = anchor_idx; k < input_num; k++) {
       h = std::get<0>(buffers[iter & 1][k]);
       buffers[(iter + 1) & 1][idx_counters[(h & mask2) >> shift2]++] =
-        buffers[iter & 1][k];
+      std::move(buffers[iter & 1][k]);
     }
   }
+
+  madvise(&*dst, input_num *
+          (sizeof(begin->first) + sizeof(begin->second) + sizeof(std::size_t)),
+          MADV_WILLNEED);
 
   // flush the last buffer to dst.
   mask1 = (1ULL << (mask_bits - partition_bits * iter)) - 1;
@@ -506,7 +526,7 @@ template <typename Key,
         h_cnt = (h & mask2) >> shift2;
         dst_idx = idx_counters[h_cnt]++;
         flush_counters[h_cnt]++;
-        *(dst + dst_idx) = buffers[iter & 1][k];
+        *(dst + dst_idx) = std::move(buffers[iter & 1][k]);
         if (nosort_bits == 0) {
           for (int m = flush_counters[h_cnt]; m < counters[h_cnt]; m++) {
             if (HashTupleCmp(*(dst + dst_idx), *(dst + dst_idx - 1), mask)) {
@@ -539,7 +559,7 @@ template <typename Key,
     h_cnt = (h & mask2) >> shift2;
     dst_idx = idx_counters[h_cnt]++;
     flush_counters[h_cnt]++;
-    *(dst + dst_idx) = buffers[iter & 1][k];
+    *(dst + dst_idx) = std::move(buffers[iter & 1][k]);
     if (nosort_bits == 0) {
       for (int m = flush_counters[h_cnt]; m < counters[h_cnt]; m++) {
         if (HashTupleCmp(*(dst + dst_idx), *(dst + dst_idx - 1), mask)) {
@@ -549,6 +569,428 @@ template <typename Key,
       }
     }
   }
+}
+
+template <typename Key,
+  typename Value,
+  typename RandomAccessIterator>
+  void bf2_helper(RandomAccessIterator begin,
+                  RandomAccessIterator end,
+                  int mask_bits,
+                  int partition_bits,
+                  int nosort_bits) {
+  std::tuple<std::size_t, Key, Value> tmp_bucket;
+  uint64_t h, mask;
+  //std::size_t h, mask;
+  unsigned int partitions, shift, idx_i, idx_j;
+  int new_mask_bits;
+
+  partitions = 1 << partition_bits;
+  mask = (1ULL << mask_bits) - 1ULL;
+  shift = mask_bits < partition_bits ? 0 : mask_bits - partition_bits;
+
+  int counters[partitions];
+  int indexes[partitions][2];
+
+  for (int i = 0; i < partitions; i++)
+    counters[i] = 0;
+  indexes[0][0] = 0;
+
+  //  std::cout << "bf2_helper mask: " << mask << " shift: "
+  //            << shift << " before: ";
+  for (auto iter = begin; iter != end; ++iter) {
+    h = std::get<0>(*iter);
+    unsigned int counter_idx = (h & mask) >> shift;
+    if (counter_idx >= partitions) {
+      std::cout << "mask_bits: " << mask_bits
+                << " partition_bits: " << partition_bits
+                << " shift: " << shift
+                << " h: " << h
+                << " counter_idx: " << counter_idx
+                << " partitions: " << partitions << "\n";
+      assert(0);
+    }
+    //assert(counter_idx >= 0);
+    //assert(counter_idx < partitions);
+    counters[counter_idx]++;
+    //std::cout << std::get<0>(*iter) << "[" << counter_idx << "], ";
+  }
+  //std::cout << "\nindexes: ";
+  for (int i = 0; i < partitions - 1; i++) {
+    indexes[i][1] = indexes[i+1][0] = indexes[i][0] + counters[i];
+  }
+  indexes[partitions-1][1] = indexes[partitions-1][0] + counters[partitions-1];
+  //for (int i = 0; i < partitions; i++) {
+  //  std::cout << "[" << indexes[i][0] << "," << indexes[i][1] << "], ";
+  //}
+  //std::cout << "\n";
+  int i = 0;
+  while (i < partitions) {
+    idx_i = indexes[i][0];
+    if (idx_i >= indexes[i][1]) {
+      i++;
+      continue;
+    }
+    tmp_bucket = begin[idx_i];
+    do {
+      h = std::get<0>(tmp_bucket);
+      idx_j = indexes[(h & mask) >> shift][0]++;
+      std::swap(begin[idx_j], tmp_bucket);
+    } while (idx_j > idx_i);
+  }
+
+  //  std::cout << "bf2_helper after: ";
+  //  for (auto iter = begin; iter != end; ++iter) {
+  //    std::cout << std::get<1>(*iter) << ", ";
+  //  }
+  //  std::cout << "indexes: ";
+  //  for (int i = 0; i < partitions; i++) {
+  //    std::cout << "[" << indexes[i][0] << "," << indexes[i][1] << "], ";
+  //  }
+  //  std::cout << "\n";
+
+  new_mask_bits = mask_bits - partition_bits;
+  if (new_mask_bits <= nosort_bits)
+    return;
+
+  if (indexes[0][0] > 1) {
+    bf2_helper<Key, Value, RandomAccessIterator>
+      (begin, begin + indexes[0][0],
+       new_mask_bits, partition_bits, nosort_bits);
+  }
+  for (int i = 1; i < partitions; i++) {
+    if (indexes[i-1][0] + 1 >= indexes[i][0])
+      continue;
+    bf2_helper<Key, Value, RandomAccessIterator>
+      (begin + indexes[i-1][0], begin + indexes[i][0],
+       new_mask_bits, partition_bits, nosort_bits);
+  }
+}
+
+template <typename Key,
+  typename Value,
+  typename Hash = std::hash<Key>,
+  typename BidirectionalIterator,
+  typename RandomAccessIterator>
+  void radix_hash_bf2(BidirectionalIterator begin,
+      BidirectionalIterator end,
+      RandomAccessIterator dst,
+      int mask_bits,
+      int partition_bits,
+      int nosort_bits) {
+  int input_num, num_iter, shift, dst_idx;
+  int partitions = 1 << partition_bits;
+  std::size_t h, mask;
+  int new_mask_bits;
+
+  input_num = std::distance(begin, end);
+
+  if (mask_bits <= nosort_bits) {
+    for (auto iter = begin; iter != end; iter++) {
+      h = Hash{}(std::get<0>(*iter));
+      std::get<0>(*dst) = h;
+      std::get<1>(*dst) = iter->first;
+      std::get<2>(*dst) = iter->second;
+      ++dst;
+    }
+    return;
+  }
+
+  num_iter = (mask_bits - nosort_bits
+              + partition_bits - 1) / partition_bits;
+  mask = (1ULL << mask_bits) - 1;
+  shift = mask_bits - partition_bits;
+  shift = shift < 0 ? 0 : shift;
+
+  // invariant: counters[partitions] is the total count
+  int counters[partitions];
+
+  for (int i = 0; i < partitions + 1; i++)
+    counters[i] = 0;
+
+  for (auto iter = begin; iter != end; ++iter) {
+    h = Hash{}(std::get<0>(*iter));
+    counters[(h & mask) >> shift]++;
+  }
+  for (int i = 1; i < partitions; i++) {
+    counters[i] += counters[i - 1];
+  }
+  for (int i = partitions - 1; i != 0; i--) {
+    counters[i] = counters[i - 1];
+  }
+  counters[0] = 0;
+
+  for (auto iter = begin; iter != end; ++iter) {
+    h = Hash{}(std::get<0>(*iter));
+    dst_idx = counters[(h & mask) >> shift]++;
+    std::get<0>(dst[dst_idx]) = h;
+    //std::get<1>(dst[dst_idx]) = std::move(iter->first);
+    //std::get<2>(dst[dst_idx]) = std::move(iter->second);
+    std::get<1>(dst[dst_idx]) = iter->first;
+    std::get<2>(dst[dst_idx]) = iter->second;
+  }
+
+  new_mask_bits = mask_bits - partition_bits;
+  if (new_mask_bits <= nosort_bits)
+    return;
+
+  if (counters[0] > 0) {
+    bf2_helper<Key, Value, RandomAccessIterator>
+      (dst, dst + counters[0], new_mask_bits, partition_bits, nosort_bits);
+  }
+
+  for (int i = 1; i < partitions; i++) {
+    if (counters[i-1] == counters[i])
+      continue;
+    bf2_helper<Key, Value, RandomAccessIterator>
+      (dst + counters[i-1], dst + counters[i],
+       new_mask_bits, partition_bits, nosort_bits);
+  }
+}
+
+template<typename RandomAccessIterator>
+static inline
+void bf3_insertion_inner(RandomAccessIterator dst,
+                         unsigned int idx,
+                         unsigned int limit,
+                         std::size_t mask) {
+  std::size_t h1, h2;
+  std::cout << "idx: " << idx
+            << " limit: " << limit << "\n";
+  while (idx > limit) {
+    h1 = std::get<0>(dst[idx]);
+    h2 = std::get<0>(dst[idx-1]);
+    if ((h1 & mask) > (h2 & mask))
+      break;
+    if ((h1 & mask) < (h2 & mask)) {
+      std::swap(dst[idx], dst[idx-1]);
+      idx--;
+      continue;
+    }
+    if (h1 > h2)
+      break;
+    if (h1 < h2) {
+      std::swap(dst[idx], dst[idx-1]);
+      idx--;
+      continue;
+    }
+    if (std::get<1>(dst[idx]) < std::get<1>(dst[idx-1])) {
+      std::swap(dst[idx], dst[idx-1]);
+      idx--;
+      continue;
+    }
+    break;
+  }
+}
+
+template<typename RandomAccessIterator>
+static inline
+void bf3_insertion_outer(RandomAccessIterator dst,
+                         unsigned int idx_begin,
+                         unsigned int idx_end,
+                         std::size_t mask) {
+  for (unsigned int idx = idx_begin + 1;
+       idx < idx_end; idx++) {
+    bf3_insertion_inner<RandomAccessIterator>(dst, idx, idx_begin, mask);
+  }
+}
+
+template <typename Key,
+  typename Value,
+  typename RandomAccessIterator>
+  void bf3_helper(RandomAccessIterator dst,
+                  const unsigned int (*super_indexes)[2],
+                  int mask_bits,
+                  int partition_bits,
+                  int nosort_bits) {
+  std::tuple<std::size_t, Key, Value> tmp_bucket;
+  std::size_t h, mask;
+  unsigned int partitions, sqrt_partitions, shift,
+    idx_i, idx_j, idx_c, s_begin, s_end, iter;
+  int new_mask_bits;
+
+  partitions = 1 << partition_bits;
+  sqrt_partitions = 1 << (partition_bits / 2);
+  mask = (1ULL << mask_bits) - 1ULL;
+  shift = mask_bits < partition_bits ? 0 : mask_bits - partition_bits;
+
+  unsigned int counters[partitions];
+  unsigned int indexes[partitions][2];
+
+  // TODO change s to a atomic variable and use a boolean to determine
+  // to use it or not.
+  for (int s = 0; s < partitions; s++) {
+    s_begin = super_indexes[s][0];
+    s_end = super_indexes[s][1];
+    // No need to sort, skip to next super partition
+    std::cout << "s_begin: " << s_begin
+              << " s_end: " << s_end << " array: ";
+    for (int i = 0; i < super_indexes[partitions-1][1]; i++) {
+      std::cout << std::get<0>(dst[i]) << ", ";
+    }
+    std::cout << "\n";
+    if (s_end - s_begin < 2)
+      continue;
+    // Partition too small, use insertion sort instead.
+    if (s_end - s_begin < sqrt_partitions) {
+      std::cout << "Use insertion sort for "
+                << s_begin << ", " << s_end << "\n";
+      bf3_insertion_outer<RandomAccessIterator>(dst, s_begin, s_end, mask);
+      continue;
+    }
+    // Setup counters for counting sort.
+    for (int i = 0; i < partitions; i++)
+      counters[i] = 0;
+    indexes[0][0] = s_begin;
+    for (unsigned int i = s_begin; i < s_end; i++) {
+      h = std::get<0>(dst[i]);
+      counters[(h & mask) >> shift]++;
+    }
+    for (int i = 0; i < partitions - 1; i++) {
+      indexes[i][1] = indexes[i+1][0] = indexes[i][0] + counters[i];
+    }
+    indexes[partitions-1][1] = indexes[partitions-1][0]
+      + counters[partitions-1];
+
+    std::cout << "bf3_helper begin: ";
+    for (unsigned int i = s_begin; i < s_end; i++) {
+      std::cout << std::get<1>(dst[i]) << ", ";
+    }
+    std::cout << "indexes: ";
+    for (int i = 0; i < partitions; i++) {
+      std::cout << "[" << indexes[i][0] << "," << indexes[i][1] << "], ";
+    }
+    std::cout << "\n";
+
+    iter = 0;
+    while (iter < partitions) {
+      idx_i = indexes[iter][0];
+      if (idx_i >= indexes[iter][1]) {
+        iter++;
+        continue;
+      }
+      tmp_bucket = dst[idx_i];
+      do {
+        h = std::get<0>(tmp_bucket);
+        idx_c = (h & mask) >> shift;
+        idx_j = indexes[idx_c][0]++;
+        std::cout << "swaping " << h
+                  << " with " << std::get<0>(dst[idx_j])
+                  << " at dst idx " << idx_j
+                  << " counter idx: " << idx_c << "\n";
+        std::swap(dst[idx_j], tmp_bucket);
+        std::cout << "indexes: ";
+        for (int i = 0; i < partitions; i++) {
+          std::cout << "[" << indexes[i][0] << "," << indexes[i][1] << "], ";
+        }
+        std::cout << "\n";
+        if (idx_c == 0) {
+          bf3_insertion_inner<RandomAccessIterator>
+            (dst, idx_j, 0, mask);
+        } else {
+          bf3_insertion_inner<RandomAccessIterator>
+            (dst, idx_j, indexes[idx_c-1][1], mask);
+        }
+      } while (idx_j > idx_i);
+    }
+
+    std::cout << "bf3_helper after: ";
+    for (unsigned int i = s_begin; i < s_end; i++) {
+      std::cout << std::get<1>(dst[i]) << ", ";
+    }
+    std::cout << "indexes: ";
+    for (int i = 0; i < partitions; i++) {
+      std::cout << "[" << indexes[i][0] << "," << indexes[i][1] << "], ";
+    }
+    std::cout << "\n";
+
+    // End of counting sort. Recurse to next level.
+    new_mask_bits = mask_bits - partition_bits;
+    if (new_mask_bits <= nosort_bits)
+      continue;
+    // Reset indexes
+    indexes[0][0] = s_begin;
+    for (int i = 1; i < partitions; i++) {
+      indexes[i][0] = indexes[i-1][1];
+    }
+    bf3_helper<Key,Value,RandomAccessIterator>
+      (dst, indexes, new_mask_bits, partition_bits, nosort_bits);
+  }
+}
+
+template <typename Key,
+  typename Value,
+  typename Hash = std::hash<Key>,
+  typename BidirectionalIterator,
+  typename RandomAccessIterator>
+  void radix_hash_bf3(BidirectionalIterator begin,
+      BidirectionalIterator end,
+      RandomAccessIterator dst,
+      int mask_bits,
+      int partition_bits,
+      int nosort_bits) {
+  int input_num, num_iter, shift, dst_idx;
+  int partitions = 1 << partition_bits;
+  std::size_t h, mask;
+  int new_mask_bits;
+
+  input_num = std::distance(begin, end);
+
+  if (mask_bits <= nosort_bits) {
+    for (auto iter = begin; iter != end; iter++) {
+      h = Hash{}(std::get<0>(*iter));
+      std::get<0>(*dst) = h;
+      std::get<1>(*dst) = iter->first;
+      std::get<2>(*dst) = iter->second;
+      ++dst;
+    }
+    return;
+  }
+
+  num_iter = (mask_bits - nosort_bits
+              + partition_bits - 1) / partition_bits;
+  mask = (1ULL << mask_bits) - 1;
+  shift = mask_bits - partition_bits;
+  shift = shift < 0 ? 0 : shift;
+
+  // invariant: counters[partitions] is the total count
+  unsigned int counters[partitions];
+  unsigned int indexes[partitions][2];
+
+  for (int i = 0; i < partitions + 1; i++)
+    counters[i] = 0;
+
+  for (auto iter = begin; iter != end; ++iter) {
+    h = Hash{}(std::get<0>(*iter));
+    counters[(h & mask) >> shift]++;
+  }
+
+  indexes[0][0] = 0;
+  for (int i = 0; i < partitions - 1; i++) {
+    indexes[i][1] = indexes[i+1][0] = indexes[i][0] + counters[i];
+  }
+  indexes[partitions-1][1] = indexes[partitions-1][0]
+  + counters[partitions-1];
+
+  for (auto iter = begin; iter != end; ++iter) {
+    h = Hash{}(std::get<0>(*iter));
+    dst_idx = indexes[(h & mask) >> shift][0]++;
+    std::get<0>(dst[dst_idx]) = h;
+    std::get<1>(dst[dst_idx]) = iter->first;
+    std::get<2>(dst[dst_idx]) = iter->second;
+  }
+
+  new_mask_bits = mask_bits - partition_bits;
+  if (new_mask_bits <= nosort_bits)
+    return;
+
+  indexes[0][0] = 0;
+  for (int i = 1; i < partitions; i++) {
+    indexes[i][0] = indexes[i-1][1];
+  }
+
+  bf3_helper<Key, Value, RandomAccessIterator>
+  (dst, indexes, new_mask_bits, partition_bits, nosort_bits);
 }
 
 #endif
