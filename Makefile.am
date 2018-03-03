@@ -30,7 +30,7 @@ buffer_latency_SOURCES = buffer_latency.cc
 buffer_latency_CXXFLAGS = -std=c++14
 buffer_latency_LDFLAGS = -lbenchmark
 
-radix_hash_bench_SOURCES = radix_hash_bench.cc strgen.cc
+radix_hash_bench_SOURCES = radix_hash_bench.cc strgen.cc radix_hash.h
 radix_hash_bench_CXXFLAGS = -std=c++14 -Wall
 radix_hash_bench_LDFLAGS = -lbenchmark
 
