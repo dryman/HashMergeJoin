@@ -38,7 +38,7 @@ radix_hash_bench_LDFLAGS = -lbenchmark
 
 hashjoin_bench_SOURCES = hashjoin_bench.cc hashjoin.cc strgen.cc \
 						 DarwinPthreadBarrier/src/pthread_barrier.c
-hashjoin_bench_CPPFLAGS = -isystem DarwinPthreadBarrier/src
+hashjoin_bench_CPPFLAGS = -isystem DarwinPthreadBarrier/src -I DarwinPthreadBarrier/src 
 hashjoin_bench_CXXFLAGS = -std=c++14
 hashjoin_bench_LDFLAGS = -lbenchmark
 
@@ -52,7 +52,7 @@ MOSTLYCLEANFILES = $(analyze_hashjoin_plists)
 
 $(analyze_hashjoin_plists):	%.plist: %.cc
 	@echo "  CCSA  " $@
-	$(CXX) --analyze -std=c++14 $< -o $@
+	$(CXX) --analyze -std=c++14 -I DarwinPthreadBarrier/src $< -o $@
 
 all-local:	$(analyze_hashjoin_plists)
 
