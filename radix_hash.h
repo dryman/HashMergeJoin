@@ -886,7 +886,7 @@ template <typename Key,
         std::cout << "\n";
         if (idx_c == 0) {
           bf3_insertion_inner<RandomAccessIterator>
-            (dst, idx_j, 0, mask);
+            (dst, idx_j, s_begin, mask);
         } else {
           bf3_insertion_inner<RandomAccessIterator>
             (dst, idx_j, indexes[idx_c-1][1], mask);
