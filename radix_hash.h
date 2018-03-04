@@ -755,8 +755,6 @@ void bf3_insertion_inner(RandomAccessIterator dst,
                          unsigned int limit,
                          std::size_t mask) {
   std::size_t h1, h2;
-  std::cout << "idx: " << idx
-            << " limit: " << limit << "\n";
   while (idx > limit) {
     h1 = std::get<0>(dst[idx]);
     h2 = std::get<0>(dst[idx-1]);
@@ -822,19 +820,12 @@ template <typename Key,
   for (int s = 0; s < partitions; s++) {
     s_begin = super_indexes[s][0];
     s_end = super_indexes[s][1];
-    // No need to sort, skip to next super partition
-    std::cout << "s_begin: " << s_begin
-              << " s_end: " << s_end << " array: ";
-    for (int i = 0; i < super_indexes[partitions-1][1]; i++) {
-      std::cout << std::get<0>(dst[i]) << ", ";
-    }
-    std::cout << "\n";
     if (s_end - s_begin < 2)
       continue;
     // Partition too small, use insertion sort instead.
     if (s_end - s_begin < sqrt_partitions) {
-      std::cout << "Use insertion sort for "
-                << s_begin << ", " << s_end << "\n";
+      //std::cout << "Use insertion sort for "
+      //<< s_begin << ", " << s_end << "\n";
       bf3_insertion_outer<RandomAccessIterator>(dst, s_begin, s_end, mask);
       continue;
     }
@@ -852,16 +843,6 @@ template <typename Key,
     indexes[partitions-1][1] = indexes[partitions-1][0]
       + counters[partitions-1];
 
-    std::cout << "bf3_helper begin: ";
-    for (unsigned int i = s_begin; i < s_end; i++) {
-      std::cout << std::get<1>(dst[i]) << ", ";
-    }
-    std::cout << "indexes: ";
-    for (int i = 0; i < partitions; i++) {
-      std::cout << "[" << indexes[i][0] << "," << indexes[i][1] << "], ";
-    }
-    std::cout << "\n";
-
     iter = 0;
     while (iter < partitions) {
       idx_i = indexes[iter][0];
@@ -874,16 +855,7 @@ template <typename Key,
         h = std::get<0>(tmp_bucket);
         idx_c = (h & mask) >> shift;
         idx_j = indexes[idx_c][0]++;
-        std::cout << "swaping " << h
-                  << " with " << std::get<0>(dst[idx_j])
-                  << " at dst idx " << idx_j
-                  << " counter idx: " << idx_c << "\n";
         std::swap(dst[idx_j], tmp_bucket);
-        std::cout << "indexes: ";
-        for (int i = 0; i < partitions; i++) {
-          std::cout << "[" << indexes[i][0] << "," << indexes[i][1] << "], ";
-        }
-        std::cout << "\n";
         if (idx_c == 0) {
           bf3_insertion_inner<RandomAccessIterator>
             (dst, idx_j, s_begin, mask);
@@ -893,16 +865,6 @@ template <typename Key,
         }
       } while (idx_j > idx_i);
     }
-
-    std::cout << "bf3_helper after: ";
-    for (unsigned int i = s_begin; i < s_end; i++) {
-      std::cout << std::get<1>(dst[i]) << ", ";
-    }
-    std::cout << "indexes: ";
-    for (int i = 0; i < partitions; i++) {
-      std::cout << "[" << indexes[i][0] << "," << indexes[i][1] << "], ";
-    }
-    std::cout << "\n";
 
     // End of counting sort. Recurse to next level.
     new_mask_bits = mask_bits - partition_bits;
