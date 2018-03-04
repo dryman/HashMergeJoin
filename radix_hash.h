@@ -8,6 +8,8 @@
 #include <functional>
 #include <sys/mman.h>
 #include <assert.h>
+#include <atomic>
+#include <thread>
 
 // namespace radix_hash?
 
@@ -954,5 +956,187 @@ template <typename Key,
   bf3_helper<Key, Value, RandomAccessIterator>
   (dst, indexes, new_mask_bits, partition_bits, nosort_bits);
 }
+
+template <typename Key,
+  typename Value,
+  typename RandomAccessIterator>
+  void bf4_helper(RandomAccessIterator dst,
+                  const std::vector<std::pair<unsigned int,
+                                              unsigned int>>& super_indexes,
+                  int mask_bits,
+                  int partition_bits,
+                  int nosort_bits,
+                  std::atomic_uint* super_counter) {
+  std::tuple<std::size_t, Key, Value> tmp_bucket;
+  std::size_t h, mask;
+  unsigned int s_idx, partitions, sqrt_partitions, shift,
+    idx_i, idx_j, idx_c, s_begin, s_end, iter;
+  int new_mask_bits;
+
+  partitions = 1 << partition_bits;
+  sqrt_partitions = 1 << (partition_bits / 2);
+  mask = (1ULL << mask_bits) - 1ULL;
+  shift = mask_bits < partition_bits ? 0 : mask_bits - partition_bits;
+
+  unsigned int counters[partitions];
+  unsigned int indexes[partitions][2];
+
+  s_idx = super_counter->fetch_add(1, std::memory_order_relaxed);
+
+  // TODO change s to a atomic variable and use a boolean to determine
+  // to use it or not.
+  while (s_idx < partitions) {
+    s_begin = super_indexes[s_idx].first;
+    s_end = super_indexes[s_idx].second;
+    if (s_end - s_begin < 2) {
+      s_idx = super_counter->fetch_add(1, std::memory_order_relaxed);
+      continue;
+    }
+    // Partition too small, use insertion sort instead.
+    if (s_end - s_begin < sqrt_partitions) {
+      bf3_insertion_outer<RandomAccessIterator>(dst, s_begin, s_end, mask);
+      s_idx = super_counter->fetch_add(1, std::memory_order_relaxed);
+      continue;
+    }
+    // Setup counters for counting sort.
+    for (int i = 0; i < partitions; i++)
+      counters[i] = 0;
+    indexes[0][0] = s_begin;
+    for (unsigned int i = s_begin; i < s_end; i++) {
+      h = std::get<0>(dst[i]);
+      counters[(h & mask) >> shift]++;
+    }
+    for (int i = 0; i < partitions - 1; i++) {
+      indexes[i][1] = indexes[i+1][0] = indexes[i][0] + counters[i];
+    }
+    indexes[partitions-1][1] = indexes[partitions-1][0]
+      + counters[partitions-1];
+
+    iter = 0;
+    while (iter < partitions) {
+      idx_i = indexes[iter][0];
+      if (idx_i >= indexes[iter][1]) {
+        iter++;
+        continue;
+      }
+      tmp_bucket = dst[idx_i];
+      do {
+        h = std::get<0>(tmp_bucket);
+        idx_c = (h & mask) >> shift;
+        idx_j = indexes[idx_c][0]++;
+        std::swap(dst[idx_j], tmp_bucket);
+        if (idx_c == 0) {
+          bf3_insertion_inner<RandomAccessIterator>
+            (dst, idx_j, s_begin, mask);
+        } else {
+          bf3_insertion_inner<RandomAccessIterator>
+            (dst, idx_j, indexes[idx_c-1][1], mask);
+        }
+      } while (idx_j > idx_i);
+    }
+
+    // End of counting sort. Recurse to next level.
+    new_mask_bits = mask_bits - partition_bits;
+    if (new_mask_bits <= nosort_bits) {
+      s_idx = super_counter->fetch_add(1, std::memory_order_relaxed);
+      continue;
+    }
+    // Reset indexes
+    indexes[0][0] = s_begin;
+    for (int i = 1; i < partitions; i++) {
+      indexes[i][0] = indexes[i-1][1];
+    }
+    bf3_helper<Key,Value,RandomAccessIterator>
+      (dst, indexes, new_mask_bits, partition_bits, nosort_bits);
+    s_idx = super_counter->fetch_add(1, std::memory_order_relaxed);
+  }
+}
+
+template <typename Key,
+  typename Value,
+  typename Hash = std::hash<Key>,
+  typename BidirectionalIterator,
+  typename RandomAccessIterator>
+  void radix_hash_bf4(BidirectionalIterator begin,
+      BidirectionalIterator end,
+      RandomAccessIterator dst,
+      int mask_bits,
+      int partition_bits,
+      int nosort_bits) {
+  int input_num, num_iter, shift, dst_idx;
+  int partitions = 1 << partition_bits;
+  std::size_t h, mask;
+  int new_mask_bits;
+  std::atomic_uint a_counter;
+
+  input_num = std::distance(begin, end);
+
+  if (mask_bits <= nosort_bits) {
+    for (auto iter = begin; iter != end; iter++) {
+      h = Hash{}(std::get<0>(*iter));
+      std::get<0>(*dst) = h;
+      std::get<1>(*dst) = iter->first;
+      std::get<2>(*dst) = iter->second;
+      ++dst;
+    }
+    return;
+  }
+
+  num_iter = (mask_bits - nosort_bits
+              + partition_bits - 1) / partition_bits;
+  mask = (1ULL << mask_bits) - 1;
+  shift = mask_bits - partition_bits;
+  shift = shift < 0 ? 0 : shift;
+
+  // invariant: counters[partitions] is the total count
+  unsigned int counters[partitions];
+  //unsigned int indexes[partitions][2];
+  std::vector<std::pair<unsigned int, unsigned int>> indexes(partitions);
+
+  for (int i = 0; i < partitions + 1; i++)
+    counters[i] = 0;
+
+  for (auto iter = begin; iter != end; ++iter) {
+    h = Hash{}(std::get<0>(*iter));
+    counters[(h & mask) >> shift]++;
+  }
+
+  indexes[0].first = 0;
+  for (int i = 0; i < partitions - 1; i++) {
+    indexes[i].second = indexes[i+1].first = indexes[i].first + counters[i];
+  }
+  indexes[partitions-1].second = indexes[partitions-1].first
+  + counters[partitions-1];
+
+  for (auto iter = begin; iter != end; ++iter) {
+    h = Hash{}(std::get<0>(*iter));
+    dst_idx = indexes[(h & mask) >> shift].first++;
+    std::get<0>(dst[dst_idx]) = h;
+    std::get<1>(dst[dst_idx]) = iter->first;
+    std::get<2>(dst[dst_idx]) = iter->second;
+  }
+
+  new_mask_bits = mask_bits - partition_bits;
+  if (new_mask_bits <= nosort_bits)
+    return;
+
+  indexes[0].first = 0;
+  for (int i = 1; i < partitions; i++) {
+    indexes[i].first = indexes[i-1].second;
+  }
+
+  a_counter = 0;
+  std::thread threads[2];
+  for (int i = 0; i < 2; i++) {
+    threads[i] = std::thread(bf4_helper<Key,Value, RandomAccessIterator>,
+                             dst, indexes, new_mask_bits,
+                             partition_bits, nosort_bits,
+                             &a_counter);
+  }
+  for (int i = 0; i < 2; i++) {
+    threads[i].join();
+  }
+}
+
 
 #endif

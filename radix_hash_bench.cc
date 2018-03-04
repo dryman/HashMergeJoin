@@ -226,6 +226,21 @@ static void BM_qsort_string(benchmark::State& state) {
   state.SetComplexityN(state.range(0));
 }
 
+static void BM_radix_hash_bf4_str(benchmark::State& state) {
+  int size = state.range(0);
+  std::vector<std::tuple<std::size_t, std::string, uint64_t>> dst(size);
+  auto src = ::create_strvec(size);
+
+  for (auto _ : state) {
+    ::radix_hash_bf4<std::string,uint64_t>(src.begin(),
+                                           src.end(), dst.begin(),
+                                           ::compute_power(size),
+                                           state.range(1), 0);
+  }
+  state.SetComplexityN(state.range(0));
+}
+
+
 static void RadixArguments(benchmark::internal::Benchmark* b) {
   for (int i = 11; i < 12; i+=1) {
     for (int j = 1024; j <= (1UL << 20); j <<= 1) {
@@ -246,13 +261,16 @@ static void RadixArguments(benchmark::internal::Benchmark* b) {
 // BENCHMARK(BM_radix_hash_bf2)->Apply(RadixArguments)->Complexity();
 //BENCHMARK(BM_radix_hash_bf3)->Apply(RadixArguments)->Complexity();
 //
-//BENCHMARK(BM_radix_hash_df1_str)->Apply(RadixArguments)->Complexity();
+BENCHMARK(BM_radix_hash_df1_str)->Apply(RadixArguments)
+->Complexity(benchmark::oN);
 //BENCHMARK(BM_radix_hash_df2_str)->Apply(RadixArguments)->Complexity();
 //BENCHMARK(BM_radix_hash_bf1_str)->Apply(RadixArguments)->Complexity();
 //BENCHMARK(BM_radix_hash_bf2_str)->Apply(RadixArguments)->Complexity();
 BENCHMARK(BM_radix_hash_bf3_str)->Apply(RadixArguments)
 ->Complexity(benchmark::oN);
 BENCHMARK(BM_qsort_string)->Apply(RadixArguments)
+->Complexity(benchmark::oN);
+BENCHMARK(BM_radix_hash_bf4_str)->Apply(RadixArguments)
 ->Complexity(benchmark::oN);
 
 BENCHMARK_MAIN();
