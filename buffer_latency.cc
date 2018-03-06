@@ -18,6 +18,7 @@
  */
 
 #include<benchmark/benchmark.h>
+#include <memory>
 
 static void BM_UniquePtr(benchmark::State& state) {
   using namespace std;

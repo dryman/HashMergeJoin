@@ -7,6 +7,7 @@
 #include <vector>
 #include <functional>
 #include <sys/mman.h>
+#include <memory>
 #include <assert.h>
 #include <atomic>
 #include <thread>
