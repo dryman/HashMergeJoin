@@ -235,7 +235,7 @@ static void BM_radix_hash_bf4_str(benchmark::State& state) {
     ::radix_hash_bf4<std::string,uint64_t>(src.begin(),
                                            src.end(), dst.begin(),
                                            ::compute_power(size),
-                                           state.range(1), 0);
+                                           state.range(1), 0, 4);
   }
   state.SetComplexityN(state.range(0));
 }

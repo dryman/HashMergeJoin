@@ -9,7 +9,6 @@
 #include <functional>
 #include <thread>
 #include "radix_hash.h"
-#include "radix_hash_multi.h"
 
 typedef std::vector<std::pair<std::string, uint64_t>> KeyValVec;
 typedef std::vector<std::tuple<std::size_t, std::string, uint64_t>>

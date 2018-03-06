@@ -10,6 +10,7 @@
 #include <assert.h>
 #include <atomic>
 #include <thread>
+#include "thread_barrier.h"
 
 // namespace radix_hash?
 
@@ -1052,24 +1053,87 @@ template <typename Key,
   }
 }
 
+template<typename Key,
+  typename Value,
+  typename Hash,
+  typename BidirectionalIterator,
+  typename RandomAccessIterator>
+  void radix_hash_bf4_worker(BidirectionalIterator begin,
+                             BidirectionalIterator end,
+                             RandomAccessIterator dst,
+                             ThreadBarrier* barrier,
+                             std::vector<std::atomic_uint>* shared_counters,
+                             std::vector<std::pair<unsigned int,
+                             unsigned int>>* indexes,
+                             unsigned int partitions,
+                             std::size_t mask,
+                             int shift) {
+  std::size_t h;
+  int dst_idx;
+  int local_counters[partitions];
+  for (int i = 0; i < partitions; i++)
+    local_counters[i] = 0;
+
+  // TODO maybe we can make no sort version in worker as well.
+  for (auto iter = begin; iter != end; ++iter) {
+    h = Hash{}(std::get<0>(*iter));
+    local_counters[(h & mask) >> shift]++;
+  }
+  for (unsigned int i = 0; i < partitions; i++) {
+    (*shared_counters)[i].fetch_add(local_counters[i],
+                                    std::memory_order_relaxed);
+  }
+
+  // in barrier
+  if (barrier->wait()) {
+    local_counters[0] = 0;
+    (*indexes)[0].first = 0;
+    for (unsigned int i = 0; i < partitions - 1; i++) {
+      local_counters[i+1] =
+        (*indexes)[i].second =
+        (*indexes)[i+1].first = (*indexes)[i].first +
+        (*shared_counters)[i].load(std::memory_order_relaxed);
+    }
+    (*indexes)[partitions-1].second = (*indexes)[partitions-1].first
+      + (*shared_counters)[partitions-1].load(std::memory_order_relaxed);
+    for (unsigned int i = 0; i < partitions; i++) {
+      (*shared_counters)[i].store(local_counters[i], std::memory_order_relaxed);
+    }
+    barrier->wait();
+  } else {
+    barrier->wait();
+  }
+
+  for (auto iter = begin; iter != end; ++iter) {
+    h = Hash{}(std::get<0>(*iter));
+    dst_idx = (*shared_counters)[(h & mask) >> shift]
+      .fetch_add(1, std::memory_order_relaxed);
+    std::get<0>(dst[dst_idx]) = h;
+    std::get<1>(dst[dst_idx]) = iter->first;
+    std::get<2>(dst[dst_idx]) = iter->second;
+  }
+}
+
 template <typename Key,
   typename Value,
   typename Hash = std::hash<Key>,
   typename BidirectionalIterator,
   typename RandomAccessIterator>
   void radix_hash_bf4(BidirectionalIterator begin,
-      BidirectionalIterator end,
-      RandomAccessIterator dst,
-      int mask_bits,
-      int partition_bits,
-      int nosort_bits) {
-  int input_num, num_iter, shift, dst_idx;
-  int partitions = 1 << partition_bits;
+                      BidirectionalIterator end,
+                      RandomAccessIterator dst,
+                      int mask_bits,
+                      int partition_bits,
+                      int nosort_bits,
+                      int num_threads) {
+  int input_num, shift, partitions, thread_partition, new_mask_bits;
   std::size_t h, mask;
-  int new_mask_bits;
-  std::atomic_uint a_counter;
+  std::atomic_uint a_counter(0);
+  ThreadBarrier barrier(num_threads);
 
+  partitions = 1 << partition_bits;
   input_num = std::distance(begin, end);
+  thread_partition = input_num / num_threads;
 
   if (mask_bits <= nosort_bits) {
     for (auto iter = begin; iter != end; iter++) {
@@ -1082,58 +1146,39 @@ template <typename Key,
     return;
   }
 
-  num_iter = (mask_bits - nosort_bits
-              + partition_bits - 1) / partition_bits;
   mask = (1ULL << mask_bits) - 1;
   shift = mask_bits - partition_bits;
   shift = shift < 0 ? 0 : shift;
 
-  // invariant: counters[partitions] is the total count
-  unsigned int counters[partitions];
-  //unsigned int indexes[partitions][2];
+  std::vector<std::atomic_uint> shared_counters(partitions);
   std::vector<std::pair<unsigned int, unsigned int>> indexes(partitions);
+  std::vector<std::thread> threads(num_threads);
 
-  for (int i = 0; i < partitions + 1; i++)
-    counters[i] = 0;
-
-  for (auto iter = begin; iter != end; ++iter) {
-    h = Hash{}(std::get<0>(*iter));
-    counters[(h & mask) >> shift]++;
+  for (int i = 0; i < num_threads-1; i++) {
+    threads[i] = std::thread(radix_hash_bf4_worker<Key,Value,Hash,
+                             BidirectionalIterator, RandomAccessIterator>,
+                             begin + i * thread_partition,
+                             begin + (i+1) * thread_partition,
+                             dst, &barrier, &shared_counters, &indexes,
+                             partitions, mask, shift);
   }
 
-  indexes[0].first = 0;
-  for (int i = 0; i < partitions - 1; i++) {
-    indexes[i].second = indexes[i+1].first = indexes[i].first + counters[i];
-  }
-  indexes[partitions-1].second = indexes[partitions-1].first
-  + counters[partitions-1];
-
-  for (auto iter = begin; iter != end; ++iter) {
-    h = Hash{}(std::get<0>(*iter));
-    dst_idx = indexes[(h & mask) >> shift].first++;
-    std::get<0>(dst[dst_idx]) = h;
-    std::get<1>(dst[dst_idx]) = iter->first;
-    std::get<2>(dst[dst_idx]) = iter->second;
+  radix_hash_bf4_worker<Key,Value,Hash>(begin+(num_threads-1)*thread_partition,
+                                        end,
+                                        dst, &barrier,
+                                        &shared_counters, &indexes,
+                                        partitions, mask, shift);
+  for (int i = 0; i < num_threads-1; i++) {
+    threads[i].join();
   }
 
-  new_mask_bits = mask_bits - partition_bits;
-  if (new_mask_bits <= nosort_bits)
-    return;
-
-  indexes[0].first = 0;
-  for (int i = 1; i < partitions; i++) {
-    indexes[i].first = indexes[i-1].second;
-  }
-
-  a_counter = 0;
-  std::thread threads[2];
-  for (int i = 0; i < 2; i++) {
+  for (int i = 0; i < num_threads; i++) {
     threads[i] = std::thread(bf4_helper<Key,Value, RandomAccessIterator>,
                              dst, indexes, new_mask_bits,
                              partition_bits, nosort_bits,
                              &a_counter);
   }
-  for (int i = 0; i < 2; i++) {
+  for (int i = 0; i < num_threads; i++) {
     threads[i].join();
   }
 }

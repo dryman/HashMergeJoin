@@ -2,10 +2,11 @@ AUTOMAKE_OPTIONS = subdir-objects
 
 ACLOCAL_AMFLAGS=-I m4
 #SUBDIRS = googletest
-TESTS = radix_hash_test leak_check strgen_test
-check_PROGRAMS = radix_hash_test leak_check strgen_test
+TESTS = radix_hash_test leak_check strgen_test thread_barrier_test
+check_PROGRAMS = radix_hash_test leak_check strgen_test thread_barrier_test
 
-radix_hash_test_SOURCES = radix_hash_test.cc
+radix_hash_test_SOURCES = radix_hash_test.cc radix_hash.h \
+                          thread_barrier.h thread_barrier.cc
 radix_hash_test_CPPFLAGS = -isystem googletest/googletest/include
 radix_hash_test_CXXFLAGS = -std=c++14 -Wall
 radix_hash_test_LDADD = googletest/googletest/lib/libgtest.la \
@@ -26,19 +27,29 @@ strgen_test_LDADD = googletest/googletest/lib/libgtest.la \
 googletest/googletest/lib/libgtest_main.la
 strgen_test_LDFLAGS = -static
 
+thread_barrier_test_SOURCES = thread_barrier.cc thread_barrier.h \
+                              thread_barrier_test.cc
+thread_barrier_test_CPPFLAGS = -isystem googletest/googletest/include
+thread_barrier_test_CXXFLAGS = -std=c++14
+thread_barrier_test_LDADD = googletest/googletest/lib/libgtest.la \
+googletest/googletest/lib/libgtest_main.la
+thread_barrier_test_LDFLAGS = -static
+
 bin_PROGRAMS = buffer_latency radix_hash_bench hashjoin_bench callback_bench
 
 buffer_latency_SOURCES = buffer_latency.cc
 buffer_latency_CXXFLAGS = -std=c++14
 buffer_latency_LDFLAGS = -lbenchmark
 
-radix_hash_bench_SOURCES = radix_hash_bench.cc strgen.cc radix_hash.h
+radix_hash_bench_SOURCES = radix_hash_bench.cc strgen.cc radix_hash.h \
+                           thread_barrier.h thread_barrier.cc
+radix_hash_bench_CPPFLAGS = -isystem DarwinPthreadBarrier/src
 radix_hash_bench_CXXFLAGS = -std=c++14 -Wall
 radix_hash_bench_LDFLAGS = -lbenchmark
 
 hashjoin_bench_SOURCES = hashjoin_bench.cc hashjoin.cc strgen.cc \
-						 DarwinPthreadBarrier/src/pthread_barrier.c
-hashjoin_bench_CPPFLAGS = -isystem DarwinPthreadBarrier/src -I DarwinPthreadBarrier/src 
+                         thread_barrier.h thread_barrier.cc
+hashjoin_bench_CPPFLAGS = -isystem DarwinPthreadBarrier/src
 hashjoin_bench_CXXFLAGS = -std=c++14
 hashjoin_bench_LDFLAGS = -lbenchmark
 
@@ -52,7 +63,7 @@ MOSTLYCLEANFILES = $(analyze_hashjoin_plists)
 
 $(analyze_hashjoin_plists):	%.plist: %.cc
 	@echo "  CCSA  " $@
-	$(CXX) --analyze -std=c++14 -I DarwinPthreadBarrier/src $< -o $@
+	$(CXX) --analyze -std=c++14 $< -o $@
 
 all-local:	$(analyze_hashjoin_plists)
 
