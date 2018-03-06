@@ -1155,6 +1155,40 @@ template <typename Key,
   std::vector<std::pair<unsigned int, unsigned int>> indexes(partitions);
   std::vector<std::thread> threads(num_threads);
 
+/*
+  // single thread approach
+  unsigned int counters[partitions];
+  for (int i = 0; i < partitions; i++)
+    counters[i] = 0;
+
+  for (auto iter = begin; iter != end; ++iter) {
+    h = Hash{}(std::get<0>(*iter));
+    counters[(h&mask)>>shift]++;
+  }
+
+  indexes[0].first=0;
+  for (int i = 0; i < partitions - 1; i++) {
+    indexes[i].second =
+      indexes[i+1].first =
+      indexes[i].first + counters[i];
+  }
+  indexes[partitions-1].second = indexes[partitions-1].first +
+    counters[partitions-1];
+
+  for (auto iter = begin; iter != end; ++iter) {
+    h = Hash{}(std::get<0>(*iter));
+    auto dst_idx = indexes[(h&mask)>>shift].first++;
+    std::get<0>(dst[dst_idx]) = h;
+    std::get<0>(dst[dst_idx]) = iter->first;
+    std::get<0>(dst[dst_idx]) = iter->second;
+  }
+  indexes[0].first = 0;
+  for (int i = 1; i< partitions; i++) {
+    indexes[i].first = indexes[i-1].second;
+  }
+  */
+
+
   for (int i = 0; i < num_threads-1; i++) {
     threads[i] = std::thread(radix_hash_bf4_worker<Key,Value,Hash,
                              BidirectionalIterator, RandomAccessIterator>,
@@ -1172,6 +1206,10 @@ template <typename Key,
   for (int i = 0; i < num_threads-1; i++) {
     threads[i].join();
   }
+
+  new_mask_bits = mask_bits - partition_bits;
+  if (new_mask_bits <= nosort_bits)
+    return;
 
   for (int i = 0; i < num_threads; i++) {
     threads[i] = std::thread(bf4_helper<Key,Value, RandomAccessIterator>,
