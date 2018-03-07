@@ -258,7 +258,7 @@ static void BM_radix_hash_bf5_str(benchmark::State& state) {
 
 static void RadixArguments(benchmark::internal::Benchmark* b) {
   for (int i = 11; i < 12; i+=1) {
-    for (int j = (1 << 10); j <= (1UL << 23); j <<= 1) {
+    for (int j = (1 << 18); j <= (1UL << 23); j <<= 1) {
       b->Args({j, i});
     }
   }
@@ -282,12 +282,12 @@ static void RadixArguments(benchmark::internal::Benchmark* b) {
 //BENCHMARK(BM_radix_hash_bf1_str)->Apply(RadixArguments)->Complexity();
 //BENCHMARK(BM_radix_hash_bf2_str)->Apply(RadixArguments)->Complexity();
 BENCHMARK(BM_qsort_string)->Apply(RadixArguments)
-->Complexity(benchmark::oN);
+->Complexity(benchmark::oN)->UseRealTime();
 BENCHMARK(BM_radix_hash_bf3_str)->Apply(RadixArguments)
-->Complexity(benchmark::oN);
+->Complexity(benchmark::oN)->UseRealTime();
 BENCHMARK(BM_radix_hash_bf4_str)->Apply(RadixArguments)
-->Complexity(benchmark::oN);
+->Complexity(benchmark::oN)->UseRealTime();
 BENCHMARK(BM_radix_hash_bf5_str)->Apply(RadixArguments)
-->Complexity(benchmark::oN);
+->Complexity(benchmark::oN)->UseRealTime();
 
 BENCHMARK_MAIN();
