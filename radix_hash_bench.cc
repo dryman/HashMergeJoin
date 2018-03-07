@@ -256,6 +256,20 @@ static void BM_radix_hash_bf5_str(benchmark::State& state) {
   state.SetComplexityN(state.range(0));
 }
 
+static void BM_radix_hash_bf6_str(benchmark::State& state) {
+  int size = state.range(0);
+  std::vector<std::tuple<std::size_t, std::string, uint64_t>> dst(size);
+  auto src = ::create_strvec(size);
+  unsigned int cores = std::thread::hardware_concurrency();
+
+  for (auto _ : state) {
+    ::radix_hash_bf6<std::string,uint64_t>(src.begin(),
+                                           src.end(), dst.begin(),
+                                           state.range(1), 0, cores);
+  }
+  state.SetComplexityN(state.range(0));
+}
+
 static void RadixArguments(benchmark::internal::Benchmark* b) {
   for (int i = 11; i < 12; i+=1) {
     for (int j = (1 << 18); j <= (1UL << 23); j <<= 1) {
@@ -288,6 +302,8 @@ BENCHMARK(BM_radix_hash_bf3_str)->Apply(RadixArguments)
 BENCHMARK(BM_radix_hash_bf4_str)->Apply(RadixArguments)
 ->Complexity(benchmark::oN)->UseRealTime();
 BENCHMARK(BM_radix_hash_bf5_str)->Apply(RadixArguments)
+->Complexity(benchmark::oN)->UseRealTime();
+BENCHMARK(BM_radix_hash_bf6_str)->Apply(RadixArguments)
 ->Complexity(benchmark::oN)->UseRealTime();
 
 BENCHMARK_MAIN();
