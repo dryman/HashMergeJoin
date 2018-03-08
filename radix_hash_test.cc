@@ -831,3 +831,18 @@ TEST(radix_hash_bf6_test, multi_pass_large_num2) {
     EXPECT_EQ(i + 1, std::get<0>(dst[i]));
   }
 }
+
+TEST(radix_hash_bf6_test, multi_pass_large_num3) {
+  int size = 1 << 18;
+  std::vector<std::pair<int, int>> src(size);
+  std::vector<std::tuple<std::size_t, int, int>> dst(size);
+  unsigned int cores = std::thread::hardware_concurrency();
+  for (int i = size; i > 0; i--) {
+    src[size-i] = std::make_pair(i, i);
+  }
+  ::radix_hash_bf6<int,int,identity_hash>(src.begin(), src.end(), dst.begin(),
+                                          10, 0, cores);
+  for (int i = 0; i < size; i++) {
+    EXPECT_EQ(i + 1, std::get<0>(dst[i]));
+  }
+}

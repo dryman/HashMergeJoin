@@ -299,10 +299,10 @@ BENCHMARK(BM_qsort_string)->Apply(RadixArguments)
 ->Complexity(benchmark::oN)->UseRealTime();
 BENCHMARK(BM_radix_hash_bf3_str)->Apply(RadixArguments)
 ->Complexity(benchmark::oN)->UseRealTime();
-BENCHMARK(BM_radix_hash_bf4_str)->Apply(RadixArguments)
-->Complexity(benchmark::oN)->UseRealTime();
-BENCHMARK(BM_radix_hash_bf5_str)->Apply(RadixArguments)
-->Complexity(benchmark::oN)->UseRealTime();
+//BENCHMARK(BM_radix_hash_bf4_str)->Apply(RadixArguments)
+//->Complexity(benchmark::oN)->UseRealTime();
+//BENCHMARK(BM_radix_hash_bf5_str)->Apply(RadixArguments)
+//->Complexity(benchmark::oN)->UseRealTime();
 BENCHMARK(BM_radix_hash_bf6_str)->Apply(RadixArguments)
 ->Complexity(benchmark::oN)->UseRealTime();
 
