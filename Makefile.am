@@ -42,7 +42,7 @@ thread_barrier_test_LDFLAGS = -static
 bin_PROGRAMS = buffer_latency radix_hash_bench hashjoin_bench callback_bench
 
 buffer_latency_SOURCES = buffer_latency.cc
-buffer_latency_CXXFLAGS = -std=c++14
+buffer_latency_CXXFLAGS = -std=c++14 @PTHREAD_CFLAGS@
 buffer_latency_LDADD = @PTHREAD_LIBS@
 buffer_latency_LDFLAGS = -lbenchmark
 
