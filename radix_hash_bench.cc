@@ -4,6 +4,7 @@
 #include <benchmark/benchmark.h>
 #include "radix_hash.h"
 #include "strgen.h"
+#include "tbb/parallel_sort.h"
 
 struct identity_hash
 {
@@ -270,6 +271,22 @@ static void BM_radix_hash_bf6_str(benchmark::State& state) {
   state.SetComplexityN(state.range(0));
 }
 
+static void BM_tbb_sort_string(benchmark::State& state) {
+  int size = state.range(0);
+  std::vector<std::tuple<std::size_t, std::string, uint64_t>> dst(size);
+  auto src = ::create_strvec(size);
+
+  for (auto _ : state) {
+    for (int i = 0; i < size; i++) {
+      std::get<0>(dst[i]) = std::hash<std::string>{}(std::get<0>(src[i]));
+      std::get<1>(dst[i]) = std::get<0>(src[i]);
+      std::get<2>(dst[i]) = std::get<1>(src[i]);
+    }
+    tbb::parallel_sort(dst.begin(), dst.end(), str_tuple_cmp);
+  }
+  state.SetComplexityN(state.range(0));
+}
+
 static void RadixArguments(benchmark::internal::Benchmark* b) {
   for (int i = 11; i < 12; i+=1) {
     for (int j = (1 << 18); j <= (1UL << 23); j <<= 1) {
@@ -296,6 +313,8 @@ static void RadixArguments(benchmark::internal::Benchmark* b) {
 //BENCHMARK(BM_radix_hash_bf1_str)->Apply(RadixArguments)->Complexity();
 //BENCHMARK(BM_radix_hash_bf2_str)->Apply(RadixArguments)->Complexity();
 BENCHMARK(BM_qsort_string)->Apply(RadixArguments)
+->Complexity(benchmark::oN)->UseRealTime();
+BENCHMARK(BM_tbb_sort_string)->Apply(RadixArguments)
 ->Complexity(benchmark::oN)->UseRealTime();
 BENCHMARK(BM_radix_hash_bf3_str)->Apply(RadixArguments)
 ->Complexity(benchmark::oN)->UseRealTime();

@@ -51,7 +51,7 @@ radix_hash_bench_SOURCES = radix_hash_bench.cc strgen.cc radix_hash.h \
 radix_hash_bench_CPPFLAGS = -isystem DarwinPthreadBarrier/src
 radix_hash_bench_CXXFLAGS = -std=c++14 -Wall @PTHREAD_CFLAGS@
 radix_hash_bench_LDADD = @PTHREAD_LIBS@
-radix_hash_bench_LDFLAGS = -lbenchmark
+radix_hash_bench_LDFLAGS = -lbenchmark -ltbb -ltbbmalloc
 
 hashjoin_bench_SOURCES = hashjoin_bench.cc hashjoin.cc strgen.cc \
                          thread_barrier.h thread_barrier.cc
