@@ -2,6 +2,7 @@
 #include <vector>
 #include <utility>
 #include <benchmark/benchmark.h>
+#include <sys/resource.h>
 #include "radix_hash.h"
 #include "strgen.h"
 #include "tbb/parallel_sort.h"
@@ -19,184 +20,12 @@ bool tuple_cmp (std::tuple<std::size_t, int, int> a,
   return std::get<0>(a) < std::get<0>(b);
 }
 
-static void BM_qsort(benchmark::State& state) {
-  int size = state.range(0);
-  std::vector<std::pair<int, int>> input(size);
-  std::vector<std::tuple<std::size_t, int, int>> dst(size);
-
-  for (int i = size; i > 0; i--) {
-    input[size - i].first = i;
-    input[size - i].second = i;
-  }
-
-  for (auto _ : state)
-    {
-      for (int i = 0; i < size; i++) {
-        std::get<0>(dst[i]) = input[i].first;
-        std::get<1>(dst[i]) = input[i].first;
-        std::get<2>(dst[i]) = input[i].first;
-      }
-
-      std::sort(dst.begin(), dst.end(), tuple_cmp);
-    }
-  state.SetComplexityN(state.range(0));
-}
-
-static void BM_radix_hash_df1(benchmark::State& state) {
-  int size = state.range(0);
-  std::vector<std::pair<int, int>> src;
-  std::vector<std::tuple<std::size_t, int, int>> dst(size);
-
-  for (int i = size; i > 0; i--) {
-    src.push_back(std::make_pair(i, i));
-  }
-
-  for (auto _ : state)
-    {
-      ::radix_hash_df1<int,int,identity_hash>(src.begin(),
-                                              src.end(), dst.begin(),
-                                              ::compute_power(size),
-                                              state.range(1), 0);
-    }
-  state.SetComplexityN(state.range(0));
-}
-
-static void BM_radix_hash_df2(benchmark::State& state) {
-  int size = state.range(0);
-  std::vector<std::pair<int, int>> src;
-  std::vector<std::tuple<std::size_t, int, int>> dst(size);
-
-  for (int i = size; i > 0; i--) {
-    src.push_back(std::make_pair(i, i));
-  }
-
-  for (auto _ : state)
-    {
-      ::radix_hash_df2<int,int,identity_hash>(src.begin(),
-                                              src.end(), dst.begin(),
-                                              ::compute_power(size),
-                                              state.range(1), 0);
-    }
-  state.SetComplexityN(state.range(0));
-}
-
-static void BM_radix_hash_bf1(benchmark::State& state) {
-  int size = state.range(0);
-  std::vector<std::pair<int, int>> src;
-  std::vector<std::tuple<std::size_t, int, int>> dst(size);
-
-  for (int i = size; i > 0; i--) {
-    src.push_back(std::make_pair(i, i));
-  }
-
-  for (auto _ : state)
-    {
-      ::radix_hash_bf1<int,int,identity_hash>(src.begin(),
-                                              src.end(), dst.begin(),
-                                              ::compute_power(size),
-                                              state.range(1), 0);
-    }
-  state.SetComplexityN(state.range(0));
-}
-
-static void BM_radix_hash_bf2(benchmark::State& state) {
-  int size = state.range(0);
-  std::vector<std::pair<int, int>> src;
-  std::vector<std::tuple<std::size_t, int, int>> dst(size);
-
-  for (int i = size; i > 0; i--) {
-    src.push_back(std::make_pair(i, i));
-  }
-
-  for (auto _ : state)
-    {
-      ::radix_hash_bf2<int,int,identity_hash>(src.begin(),
-                                              src.end(), dst.begin(),
-                                              ::compute_power(size),
-                                              state.range(1), 0);
-    }
-  state.SetComplexityN(state.range(0));
-}
-
-static void BM_radix_hash_bf3(benchmark::State& state) {
-  int size = state.range(0);
-  std::vector<std::pair<int, int>> src;
-  std::vector<std::tuple<std::size_t, int, int>> dst(size);
-
-  for (int i = size; i > 0; i--) {
-    src.push_back(std::make_pair(i, i));
-  }
-
-  for (auto _ : state)
-    {
-      ::radix_hash_bf3<int,int,identity_hash>(src.begin(),
-                                              src.end(), dst.begin(),
-                                              ::compute_power(size),
-                                              state.range(1), 0);
-    }
-  state.SetComplexityN(state.range(0));
-}
-
-static void BM_radix_hash_df1_str(benchmark::State& state) {
-  int size = state.range(0);
-  std::vector<std::tuple<std::size_t, std::string, uint64_t>> dst(size);
-  auto src = ::create_strvec(size);
-
-  for (auto _ : state) {
-    ::radix_hash_df1<std::string,uint64_t>(src.begin(),
-                                           src.end(), dst.begin(),
-                                           ::compute_power(size),
-                                           state.range(1), 0);
-  }
-  state.SetComplexityN(state.range(0));
-}
-
-static void BM_radix_hash_df2_str(benchmark::State& state) {
-  int size = state.range(0);
-  std::vector<std::tuple<std::size_t, std::string, uint64_t>> dst(size);
-  auto src = ::create_strvec(size);
-
-  for (auto _ : state) {
-    ::radix_hash_df2<std::string,uint64_t>(src.begin(),
-                                           src.end(), dst.begin(),
-                                           ::compute_power(size),
-                                           state.range(1), 0);
-  }
-  state.SetComplexityN(state.range(0));
-}
-
-static void BM_radix_hash_bf1_str(benchmark::State& state) {
-  int size = state.range(0);
-  std::vector<std::tuple<std::size_t, std::string, uint64_t>> dst(size);
-  auto src = ::create_strvec(size);
-
-  for (auto _ : state) {
-    ::radix_hash_bf1<std::string,uint64_t>(src.begin(),
-                                           src.end(), dst.begin(),
-                                           ::compute_power(size),
-                                           state.range(1), 0);
-  }
-  state.SetComplexityN(state.range(0));
-}
-
-static void BM_radix_hash_bf2_str(benchmark::State& state) {
-  int size = state.range(0);
-  std::vector<std::tuple<std::size_t, std::string, uint64_t>> dst(size);
-  auto src = ::create_strvec(size);
-
-  for (auto _ : state) {
-    ::radix_hash_bf2<std::string,uint64_t>(src.begin(),
-                                           src.end(), dst.begin(),
-                                           ::compute_power(size),
-                                           state.range(1), 0);
-  }
-  state.SetComplexityN(state.range(0));
-}
-
 static void BM_radix_hash_bf3_str(benchmark::State& state) {
   int size = state.range(0);
   std::vector<std::tuple<std::size_t, std::string, uint64_t>> dst(size);
   auto src = ::create_strvec(size);
+  struct rusage u_before, u_after;
+  getrusage(RUSAGE_SELF, &u_before);
 
   for (auto _ : state) {
     ::radix_hash_bf3<std::string,uint64_t>(src.begin(),
@@ -204,7 +33,11 @@ static void BM_radix_hash_bf3_str(benchmark::State& state) {
                                            ::compute_power(size),
                                            state.range(1), 0);
   }
+  getrusage(RUSAGE_SELF, &u_after);
   state.SetComplexityN(state.range(0));
+  state.counters["Minor"] = u_after.ru_minflt - u_before.ru_minflt;
+  state.counters["Major"] = u_after.ru_majflt - u_before.ru_majflt;
+  state.counters["Swap"] = u_after.ru_nswap - u_before.ru_nswap;
 }
 
 bool str_tuple_cmp (std::tuple<std::size_t, std::string, uint64_t> a,
@@ -216,6 +49,8 @@ static void BM_qsort_string(benchmark::State& state) {
   int size = state.range(0);
   std::vector<std::tuple<std::size_t, std::string, uint64_t>> dst(size);
   auto src = ::create_strvec(size);
+  struct rusage u_before, u_after;
+  getrusage(RUSAGE_SELF, &u_before);
 
   for (auto _ : state) {
     for (int i = 0; i < size; i++) {
@@ -225,7 +60,11 @@ static void BM_qsort_string(benchmark::State& state) {
     }
     std::sort(dst.begin(), dst.end(), str_tuple_cmp);
   }
+  getrusage(RUSAGE_SELF, &u_after);
   state.SetComplexityN(state.range(0));
+  state.counters["Minor"] = u_after.ru_minflt - u_before.ru_minflt;
+  state.counters["Major"] = u_after.ru_majflt - u_before.ru_majflt;
+  state.counters["Swap"] = u_after.ru_nswap - u_before.ru_nswap;
 }
 
 static void BM_radix_hash_bf4_str(benchmark::State& state) {
@@ -233,6 +72,8 @@ static void BM_radix_hash_bf4_str(benchmark::State& state) {
   std::vector<std::tuple<std::size_t, std::string, uint64_t>> dst(size);
   auto src = ::create_strvec(size);
   unsigned int cores = std::thread::hardware_concurrency();
+  struct rusage u_before, u_after;
+  getrusage(RUSAGE_SELF, &u_before);
 
   for (auto _ : state) {
     ::radix_hash_bf4<std::string,uint64_t>(src.begin(),
@@ -240,7 +81,11 @@ static void BM_radix_hash_bf4_str(benchmark::State& state) {
                                            ::compute_power(size),
                                            state.range(1), 0, cores);
   }
+  getrusage(RUSAGE_SELF, &u_after);
   state.SetComplexityN(state.range(0));
+  state.counters["Minor"] = u_after.ru_minflt - u_before.ru_minflt;
+  state.counters["Major"] = u_after.ru_majflt - u_before.ru_majflt;
+  state.counters["Swap"] = u_after.ru_nswap - u_before.ru_nswap;
 }
 
 static void BM_radix_hash_bf5_str(benchmark::State& state) {
@@ -248,6 +93,8 @@ static void BM_radix_hash_bf5_str(benchmark::State& state) {
   std::vector<std::tuple<std::size_t, std::string, uint64_t>> dst(size);
   auto src = ::create_strvec(size);
   unsigned int cores = std::thread::hardware_concurrency();
+  struct rusage u_before, u_after;
+  getrusage(RUSAGE_SELF, &u_before);
 
   for (auto _ : state) {
     ::radix_hash_bf5<std::string,uint64_t>(src.begin(),
@@ -255,7 +102,11 @@ static void BM_radix_hash_bf5_str(benchmark::State& state) {
                                            ::compute_power(size),
                                            state.range(1), 0, cores);
   }
+  getrusage(RUSAGE_SELF, &u_after);
   state.SetComplexityN(state.range(0));
+  state.counters["Minor"] = u_after.ru_minflt - u_before.ru_minflt;
+  state.counters["Major"] = u_after.ru_majflt - u_before.ru_majflt;
+  state.counters["Swap"] = u_after.ru_nswap - u_before.ru_nswap;
 }
 
 static void BM_radix_hash_bf6_str(benchmark::State& state) {
@@ -263,19 +114,28 @@ static void BM_radix_hash_bf6_str(benchmark::State& state) {
   std::vector<std::tuple<std::size_t, std::string, uint64_t>> dst(size);
   auto src = ::create_strvec(size);
   unsigned int cores = std::thread::hardware_concurrency();
+  struct rusage u_before, u_after;
+  getrusage(RUSAGE_SELF, &u_before);
 
   for (auto _ : state) {
     ::radix_hash_bf6<std::string,uint64_t>(src.begin(),
                                            src.end(), dst.begin(),
                                            state.range(1), 0, cores);
   }
+  getrusage(RUSAGE_SELF, &u_after);
+
   state.SetComplexityN(state.range(0));
+  state.counters["Minor"] = u_after.ru_minflt - u_before.ru_minflt;
+  state.counters["Major"] = u_after.ru_majflt - u_before.ru_majflt;
+  state.counters["Swap"] = u_after.ru_nswap - u_before.ru_nswap;
 }
 
 static void BM_tbb_sort_string(benchmark::State& state) {
   int size = state.range(0);
   std::vector<std::tuple<std::size_t, std::string, uint64_t>> dst(size);
   auto src = ::create_strvec(size);
+  struct rusage u_before, u_after;
+  getrusage(RUSAGE_SELF, &u_before);
 
   for (auto _ : state) {
     for (int i = 0; i < size; i++) {
@@ -285,13 +145,19 @@ static void BM_tbb_sort_string(benchmark::State& state) {
     }
     tbb::parallel_sort(dst.begin(), dst.end(), str_tuple_cmp);
   }
+  getrusage(RUSAGE_SELF, &u_after);
   state.SetComplexityN(state.range(0));
+  state.counters["Minor"] = u_after.ru_minflt - u_before.ru_minflt;
+  state.counters["Major"] = u_after.ru_majflt - u_before.ru_majflt;
+  state.counters["Swap"] = u_after.ru_nswap - u_before.ru_nswap;
 }
 
 static void BM_pdqsort_string(benchmark::State& state) {
   int size = state.range(0);
   std::vector<std::tuple<std::size_t, std::string, uint64_t>> dst(size);
   auto src = ::create_strvec(size);
+  struct rusage u_before, u_after;
+  getrusage(RUSAGE_SELF, &u_before);
 
   for (auto _ : state) {
     for (int i = 0; i < size; i++) {
@@ -301,7 +167,12 @@ static void BM_pdqsort_string(benchmark::State& state) {
     }
     pdqsort(dst.begin(), dst.end(), str_tuple_cmp);
   }
+  getrusage(RUSAGE_SELF, &u_after);
+
   state.SetComplexityN(state.range(0));
+  state.counters["Minor"] = u_after.ru_minflt - u_before.ru_minflt;
+  state.counters["Major"] = u_after.ru_majflt - u_before.ru_majflt;
+  state.counters["Swap"] = u_after.ru_nswap - u_before.ru_nswap;
 }
 
 
@@ -318,18 +189,6 @@ static void RadixArguments(benchmark::internal::Benchmark* b) {
  * input is small. For very large input, depth first wins a little bit.
  */
 
-//BENCHMARK(BM_qsort)->Range(1 << 10, 1 << 20)->Complexity();
-//BENCHMARK(BM_radix_hash_df1)->Apply(RadixArguments)->Complexity();
-//BENCHMARK(BM_radix_hash_df2)->Apply(RadixArguments)->Complexity();
-//BENCHMARK(BM_radix_hash_bf1)->Apply(RadixArguments)->Complexity();
-// BENCHMARK(BM_radix_hash_bf2)->Apply(RadixArguments)->Complexity();
-//BENCHMARK(BM_radix_hash_bf3)->Apply(RadixArguments)->Complexity();
-//
-//BENCHMARK(BM_radix_hash_df1_str)->Apply(RadixArguments)
-//->Complexity(benchmark::oN);
-//BENCHMARK(BM_radix_hash_df2_str)->Apply(RadixArguments)->Complexity();
-//BENCHMARK(BM_radix_hash_bf1_str)->Apply(RadixArguments)->Complexity();
-//BENCHMARK(BM_radix_hash_bf2_str)->Apply(RadixArguments)->Complexity();
 BENCHMARK(BM_qsort_string)->Apply(RadixArguments)
 ->Complexity(benchmark::oN)->UseRealTime();
 BENCHMARK(BM_tbb_sort_string)->Apply(RadixArguments)
@@ -338,10 +197,10 @@ BENCHMARK(BM_pdqsort_string)->Apply(RadixArguments)
 ->Complexity(benchmark::oN)->UseRealTime();
 BENCHMARK(BM_radix_hash_bf3_str)->Apply(RadixArguments)
 ->Complexity(benchmark::oN)->UseRealTime();
-//BENCHMARK(BM_radix_hash_bf4_str)->Apply(RadixArguments)
-//->Complexity(benchmark::oN)->UseRealTime();
-//BENCHMARK(BM_radix_hash_bf5_str)->Apply(RadixArguments)
-//->Complexity(benchmark::oN)->UseRealTime();
+BENCHMARK(BM_radix_hash_bf4_str)->Apply(RadixArguments)
+->Complexity(benchmark::oN)->UseRealTime();
+BENCHMARK(BM_radix_hash_bf5_str)->Apply(RadixArguments)
+->Complexity(benchmark::oN)->UseRealTime();
 BENCHMARK(BM_radix_hash_bf6_str)->Apply(RadixArguments)
 ->Complexity(benchmark::oN)->UseRealTime();
 

@@ -1449,38 +1449,6 @@ template <typename Key,
       + counters[partitions-1];
 
     new_mask_bits = mask_bits - partition_bits;
-    if (new_mask_bits <= 0) {
-      iter = 0;
-      while (iter < partitions) {
-        idx_i = indexes[iter][0];
-        if (idx_i >= indexes[iter][1]) {
-          iter++;
-          continue;
-        }
-        h = std::get<0>(dst[idx_i]);
-        idx_c = (h & mask) >> shift;
-        if (idx_c == iter) {
-          indexes[iter][0]++;
-          continue;
-        }
-        tmp_bucket = std::move(dst[idx_i]);
-        do {
-          h = std::get<0>(tmp_bucket);
-          idx_c = (h & mask) >> shift;
-          idx_j = indexes[idx_c][0]++;
-          std::swap(dst[idx_j], tmp_bucket);
-          if (idx_c == 0) {
-            bf6_insertion_inner<RandomAccessIterator>
-              (dst, idx_j, s_begin);
-          } else {
-            bf6_insertion_inner<RandomAccessIterator>
-              (dst, idx_j, indexes[idx_c-1][1]);
-          }
-        } while (idx_j > idx_i);
-      }
-      continue;
-    }
-
     iter = 0;
     while (iter < partitions) {
       idx_i = indexes[iter][0];
@@ -1501,6 +1469,10 @@ template <typename Key,
         idx_j = indexes[idx_c][0]++;
         std::swap(dst[idx_j], tmp_bucket);
       } while (idx_j > idx_i);
+    }
+
+    if (new_mask_bits <= 0) {
+      continue;
     }
 
     // Reset indexes
@@ -1570,38 +1542,6 @@ template <typename Key,
     new_mask_bits = mask_bits - partition_bits;
     iter = 0;
 
-    if (new_mask_bits <= 0) {
-      while (iter < partitions) {
-        idx_i = indexes[iter][0];
-        if (idx_i >= indexes[iter][1]) {
-          iter++;
-          continue;
-        }
-        h = std::get<0>(dst[idx_i]);
-        idx_c = (h & mask) >> shift;
-        if (idx_c == iter) {
-          indexes[iter][0]++;
-          continue;
-        }
-        tmp_bucket = std::move(dst[idx_i]);
-        do {
-          h = std::get<0>(tmp_bucket);
-          idx_c = (h & mask) >> shift;
-          idx_j = indexes[idx_c][0]++;
-          std::swap(dst[idx_j], tmp_bucket);
-          if (idx_c == 0) {
-            bf6_insertion_inner<RandomAccessIterator>
-              (dst, idx_j, s_begin);
-          } else {
-            bf6_insertion_inner<RandomAccessIterator>
-              (dst, idx_j, indexes[idx_c-1][1]);
-          }
-        } while (idx_j > idx_i);
-      }
-      s_idx = super_counter->fetch_add(1, std::memory_order_relaxed);
-      continue;
-    }
-
     while (iter < partitions) {
       idx_i = indexes[iter][0];
       if (idx_i >= indexes[iter][1]) {
@@ -1621,6 +1561,11 @@ template <typename Key,
         idx_j = indexes[idx_c][0]++;
         std::swap(dst[idx_j], tmp_bucket);
       } while (idx_j > idx_i);
+    }
+
+    if (new_mask_bits <= 0) {
+      s_idx = super_counter->fetch_add(1, std::memory_order_relaxed);
+      continue;
     }
 
     // Reset indexes
