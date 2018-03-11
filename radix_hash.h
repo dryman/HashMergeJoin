@@ -895,7 +895,7 @@ template <typename Key,
       int mask_bits,
       int partition_bits,
       int nosort_bits) {
-  unsigned int shift, dst_idx;
+  int shift, dst_idx;
   unsigned int partitions = 1 << partition_bits;
   std::size_t h, mask;
   int new_mask_bits;
