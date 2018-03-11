@@ -268,15 +268,6 @@ static void BM_pdqsort_string(benchmark::State& state) {
   state.counters["Swap"] = u_after.ru_nswap - u_before.ru_nswap;
 }
 
-
-static void RadixArguments(benchmark::internal::Benchmark* b) {
-  for (int i = 11; i < 12; i+=1) {
-    for (int j = (1 << 18); j <= (1 << 23); j <<= 1) {
-      b->Args({j, i});
-    }
-  }
-}
-
 static void BM_bf6_breakdown1(benchmark::State& state) {
   int size = state.range(0);
   std::vector<std::tuple<std::size_t, std::string, uint64_t>> dst(size);
@@ -313,7 +304,7 @@ static void BM_bf6_breakdown1(benchmark::State& state) {
     std::vector<std::pair<unsigned int, unsigned int>> indexes(partitions);
     std::vector<std::thread> threads(num_threads);
 
-    for (int i = 0; i < num_threads-1; i++) {
+    for (unsigned int i = 0; i < num_threads-1; i++) {
       threads[i] = std::thread(radix_hash_bf6_worker<std::string,uint64_t,
                                std::hash<std::string>,
                                KeyValVec::iterator, HashKeyValVec::iterator>,
@@ -331,7 +322,7 @@ static void BM_bf6_breakdown1(benchmark::State& state) {
        src.end(), dst.begin(), num_threads-1, num_threads,
        &barrier, &shared_counters, &indexes,
        partitions, shift);
-    for (int i = 0; i < num_threads-1; i++) {
+    for (unsigned int i = 0; i < num_threads-1; i++) {
       threads[i].join();
     }
   }
@@ -350,6 +341,46 @@ static void BM_bf6_breakdown1(benchmark::State& state) {
   state.counters["Major"] = u_after.ru_majflt - u_before.ru_majflt;
   state.counters["Swap"] = u_after.ru_nswap - u_before.ru_nswap;
 }
+
+static void RadixArguments(benchmark::internal::Benchmark* b) {
+  for (int i = 11; i < 12; i+=1) {
+    for (int j = (1 << 18); j <= (1 << 23); j <<= 1) {
+      b->Args({j, i});
+    }
+  }
+}
+
+static void BM_bf6_1_thread(benchmark::State& state) {
+  int size = state.range(0);
+  std::vector<std::tuple<std::size_t, std::string, uint64_t>> dst(size);
+  auto src = ::create_strvec(size);
+  struct rusage u_before, u_after;
+  getrusage(RUSAGE_SELF, &u_before);
+
+#ifdef HAVE_PAPI
+  assert(PAPI_start_counters(events, e_num) == PAPI_OK);
+#endif
+
+  for (auto _ : state) {
+    ::radix_hash_bf6<std::string,uint64_t>(src.begin(),
+                                           src.end(), dst.begin(),
+                                           state.range(1), 0, 1);
+  }
+#ifdef HAVE_PAPI
+  assert(PAPI_stop_counters(papi_values, e_num) == PAPI_OK);
+  state.counters["L1 miss"] = papi_values[0];
+  state.counters["L2 miss"] = papi_values[1];
+  state.counters["L3 miss"] = papi_values[2];
+#endif
+
+  getrusage(RUSAGE_SELF, &u_after);
+
+  state.SetComplexityN(state.range(0));
+  state.counters["Minor"] = u_after.ru_minflt - u_before.ru_minflt;
+  state.counters["Major"] = u_after.ru_majflt - u_before.ru_majflt;
+  state.counters["Swap"] = u_after.ru_nswap - u_before.ru_nswap;
+}
+
 
 /*
  * Note: breadth first search outperforms depth first search when
@@ -370,7 +401,11 @@ BENCHMARK(BM_radix_hash_bf5_str)->Apply(RadixArguments)
 ->Complexity(benchmark::oN)->UseRealTime();
 BENCHMARK(BM_radix_hash_bf6_str)->Apply(RadixArguments)
 ->Complexity(benchmark::oN)->UseRealTime();
+
 BENCHMARK(BM_bf6_breakdown1)->Apply(RadixArguments)
+->Complexity(benchmark::oN)->UseRealTime();
+
+BENCHMARK(BM_bf6_1_thread)->Apply(RadixArguments)
 ->Complexity(benchmark::oN)->UseRealTime();
 
 BENCHMARK_MAIN();

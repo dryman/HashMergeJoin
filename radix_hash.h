@@ -1678,12 +1678,15 @@ template <typename Key,
 
   new_mask_bits = 64 - partition_bits;
 
-  for (int i = 0; i < num_threads; i++) {
+  for (int i = 0; i < num_threads-1; i++) {
     threads[i] = std::thread(bf6_helper_p<Key,Value, RandomAccessIterator>,
                              dst, indexes, new_mask_bits,
                              partition_bits, &a_counter);
   }
-  for (int i = 0; i < num_threads; i++) {
+  bf6_helper_p<Key,Value, RandomAccessIterator>(
+      dst, indexes, new_mask_bits,
+      partition_bits, &a_counter);
+  for (int i = 0; i < num_threads-1; i++) {
     threads[i].join();
   }
 }
