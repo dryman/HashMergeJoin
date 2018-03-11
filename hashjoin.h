@@ -36,18 +36,12 @@ class HashMergeJoin {
 
   //protected:
  public:
-  HashMergeJoin() = default;
-  HashMergeJoin(std::vector<std::tuple<std::size_t, Key, RValue>> r_sorted,
-                std::vector<std::tuple<std::size_t, Key, SValue>> s_sorted) :
-  _r_sorted(r_sorted), _s_sorted(s_sorted) {}
-
   HashMergeJoin(RIter r_begin, RIter r_end,
                 SIter s_begin, SIter s_end) {
     distance_type r_size, s_size;
     unsigned int cores = std::thread::hardware_concurrency();
     r_size = std::distance(r_begin, r_end);
     s_size = std::distance(s_begin, s_end);
-    //std::cout << "r_size: " << r_size << "\n";
 
     std::vector<std::tuple<std::size_t, Key, RValue>>r_sorted(r_size);
     ::radix_hash_bf6<Key, RValue>(r_begin, r_end, r_sorted.begin(),
@@ -57,7 +51,6 @@ class HashMergeJoin {
     ::radix_hash_bf6<Key, SValue>(s_begin, s_end, s_sorted.begin(),
                                   11, 0, cores);
 
-    std::cout << "rs size before whole setup: " << r_sorted.size() << "\n";
     _r_sorted = r_sorted;
     _s_sorted = s_sorted;
   }
@@ -69,11 +62,7 @@ class HashMergeJoin {
            SSortedIter ss_iter, SSortedIter ss_end)
     : _rs_iter(rs_iter), _rs_end(rs_end),
       _ss_iter(ss_iter), _ss_end(ss_end) {
-      std::size_t r_hash, s_hash;
-      //std::cout << "rs distance: " << std::distance(_rs_iter, rs_end) << "\n";
-      //std::cout << _rs_iter << _rs_end;
       while (true) {
-        // TODO what if we need to loop back
         if (_rs_iter == _rs_end) {
           _ss_iter = _ss_end;
           break;
@@ -82,74 +71,47 @@ class HashMergeJoin {
           _rs_iter = _rs_end;
           break;
         }
-        r_hash = std::get<0>(*_rs_iter);
-        s_hash = std::get<0>(*_ss_iter);
-        if (s_hash < r_hash) {
-          _ss_iter++;
-          continue;
-        }
-        if (s_hash > r_hash) {
+        if (std::get<0>(*_rs_iter) < std::get<0>(*_ss_iter)) {
           _rs_iter++;
           continue;
         }
-        if (std::get<1>(*_ss_iter) < std::get<1>(*_rs_iter)) {
+        if (std::get<0>(*_ss_iter) < std::get<0>(*_rs_iter)) {
           _ss_iter++;
           continue;
         }
-        if (std::get<1>(*_ss_iter) > std::get<1>(*_rs_iter)) {
+        if (std::get<1>(*_rs_iter) == std::get<1>(*_ss_iter)) {
+          break;
+        }
+        if (std::get<1>(*_rs_iter) < std::get<1>(*_ss_iter)) {
           _rs_iter++;
           continue;
         }
-        break;
+        _ss_iter++;
       }
     }
     iterator& operator++() {
-      std::size_t r_hash, s_hash, s_hash_next;
-      if (_ss_iter + 1 == _ss_end) {
-        if (_ss_dupcnt > 0) {
-          if (_rs_iter + 1 == _rs_end) {
-            _rs_iter = _rs_end;
-            _ss_iter = _ss_end;
-            _ss_dupcnt = 0;
-            return *this;
-          }
-          ++_rs_iter;
-          _ss_iter -= _ss_dupcnt;
-          _ss_dupcnt = 0;
-          return *this;
-        }
+      if (_rs_iter+1 == _rs_end) {
         _rs_iter = _rs_end;
         _ss_iter = _ss_end;
-        _ss_dupcnt = 0;
         return *this;
       }
-      r_hash = std::get<0>(*_rs_iter);
-      s_hash = std::get<0>(*_ss_iter);
-      s_hash_next = std::get<0>(*(_ss_iter+1));
+      if (_ss_iter+1 == _ss_end) {
+        _rs_iter = _rs_end;
+        _ss_iter = _ss_end;
+        return *this;
+      }
+      if (std::get<0>(*_rs_iter) == std::get<0>(*(_rs_iter+1))) {
+        _rs_iter++;
+        goto find_match;
+      }
+      if (std::get<0>(*_ss_iter) == std::get<0>(*(_ss_iter+1))) {
+        _ss_iter++;
+        goto find_match;
+      }
+      _rs_iter++;
+      _ss_iter++;
 
-      if (s_hash == s_hash_next &&
-          std::get<1>(*_ss_iter) == std::get<1>(*(_ss_iter + 1))) {
-        ++_ss_dupcnt;
-        ++_ss_iter;
-        return *this;
-      }
-      if (_ss_dupcnt > 0) {
-        if (_rs_iter + 1 == _rs_end) {
-          _rs_iter = _rs_end;
-          _ss_iter = _ss_end;
-          _ss_dupcnt = 0;
-          return *this;
-        }
-        if (std::get<1>(*_rs_iter) == std::get<1>(*(_rs_iter+1))) {
-          _ss_iter -= _ss_dupcnt;
-          ++_rs_iter;
-          _ss_dupcnt = 0;
-          return *this;
-        }
-        _ss_dupcnt = 0;
-      }
-      ++_rs_iter;
-      ++_ss_iter;
+    find_match:
       while (true) {
         if (_rs_iter == _rs_end) {
           _ss_iter = _ss_end;
@@ -159,28 +121,22 @@ class HashMergeJoin {
           _rs_iter = _rs_end;
           break;
         }
-        r_hash = std::get<0>(*_rs_iter);
-        s_hash = std::get<0>(*_ss_iter);
-        if (std::get<1>(*_ss_iter) == std::get<1>(*_rs_iter)) {
+        if (std::get<0>(*_rs_iter) < std::get<0>(*_ss_iter)) {
+          _rs_iter++;
+          continue;
+        }
+        if (std::get<0>(*_ss_iter) < std::get<0>(*_rs_iter)) {
+          _ss_iter++;
+          continue;
+        }
+        if (std::get<1>(*_rs_iter) == std::get<1>(*_ss_iter)) {
           break;
         }
-        if (s_hash < r_hash) {
-          _ss_iter++;
-          continue;
-        }
-        if (s_hash > r_hash) {
+        if (std::get<1>(*_rs_iter) < std::get<1>(*_ss_iter)) {
           _rs_iter++;
           continue;
         }
-        if (std::get<1>(*_ss_iter) < std::get<1>(*_rs_iter)) {
-          _ss_iter++;
-          continue;
-        }
-        if (std::get<1>(*_ss_iter) > std::get<1>(*_rs_iter)) {
-          _rs_iter++;
-          continue;
-        }
-        break;
+        _ss_iter++;
       }
       return *this;
     }
@@ -208,15 +164,13 @@ class HashMergeJoin {
     RSortedIter _rs_end;
     SSortedIter _ss_iter;
     SSortedIter _ss_end;
-    int _ss_dupcnt = 0;
     std::tuple<Key*, RValue*, SValue*> tmp_val;
   };
 
  public:
   iterator begin() {
-    std::cout << "rs size: " << _r_sorted.size() << "\n";
-    return iterator(_r_sorted.end(), _r_sorted.end(),
-                    _s_sorted.end(), _s_sorted.end());
+    return iterator(_r_sorted.begin(), _r_sorted.end(),
+                    _s_sorted.begin(), _s_sorted.end());
   }
 
   iterator end() {
