@@ -2,11 +2,27 @@
 #include <vector>
 #include <utility>
 #include <benchmark/benchmark.h>
+#include <assert.h>
 #include <sys/resource.h>
+#include <stdio.h>
+
 #include "radix_hash.h"
 #include "strgen.h"
 #include "tbb/parallel_sort.h"
 #include "pdqsort/pdqsort.h"
+#include "config.h"
+
+#ifdef HAVE_PAPI
+#include "papi.h"
+#endif
+
+const int e_num = 3;
+int events[e_num] = {
+  PAPI_L1_DCM, 
+  PAPI_L2_DCM, 
+  PAPI_L3_TCM,
+};
+long long papi_values[e_num];
 
 struct identity_hash
 {
@@ -27,17 +43,29 @@ static void BM_radix_hash_bf3_str(benchmark::State& state) {
   struct rusage u_before, u_after;
   getrusage(RUSAGE_SELF, &u_before);
 
+#ifdef HAVE_PAPI
+  assert(PAPI_start_counters(events, e_num) == PAPI_OK);
+#endif
+
   for (auto _ : state) {
     ::radix_hash_bf3<std::string,uint64_t>(src.begin(),
                                            src.end(), dst.begin(),
                                            ::compute_power(size),
                                            state.range(1), 0);
   }
+
+#ifdef HAVE_PAPI
+  assert(PAPI_stop_counters(papi_values, e_num) == PAPI_OK);
+  state.counters["L1 miss"] = papi_values[0];
+  state.counters["L2 miss"] = papi_values[1];
+  state.counters["L3 miss"] = papi_values[2];
+#endif
+
   getrusage(RUSAGE_SELF, &u_after);
-  state.SetComplexityN(state.range(0));
   state.counters["Minor"] = u_after.ru_minflt - u_before.ru_minflt;
   state.counters["Major"] = u_after.ru_majflt - u_before.ru_majflt;
   state.counters["Swap"] = u_after.ru_nswap - u_before.ru_nswap;
+  state.SetComplexityN(state.range(0));
 }
 
 bool str_tuple_cmp (std::tuple<std::size_t, std::string, uint64_t> a,
@@ -52,6 +80,10 @@ static void BM_qsort_string(benchmark::State& state) {
   struct rusage u_before, u_after;
   getrusage(RUSAGE_SELF, &u_before);
 
+#ifdef HAVE_PAPI
+  assert(PAPI_start_counters(events, e_num) == PAPI_OK);
+#endif
+
   for (auto _ : state) {
     for (int i = 0; i < size; i++) {
       std::get<0>(dst[i]) = std::hash<std::string>{}(std::get<0>(src[i]));
@@ -60,6 +92,13 @@ static void BM_qsort_string(benchmark::State& state) {
     }
     std::sort(dst.begin(), dst.end(), str_tuple_cmp);
   }
+#ifdef HAVE_PAPI
+  assert(PAPI_stop_counters(papi_values, e_num) == PAPI_OK);
+  state.counters["L1 miss"] = papi_values[0];
+  state.counters["L2 miss"] = papi_values[1];
+  state.counters["L3 miss"] = papi_values[2];
+#endif
+
   getrusage(RUSAGE_SELF, &u_after);
   state.SetComplexityN(state.range(0));
   state.counters["Minor"] = u_after.ru_minflt - u_before.ru_minflt;
@@ -75,12 +114,23 @@ static void BM_radix_hash_bf4_str(benchmark::State& state) {
   struct rusage u_before, u_after;
   getrusage(RUSAGE_SELF, &u_before);
 
+#ifdef HAVE_PAPI
+  assert(PAPI_start_counters(events, e_num) == PAPI_OK);
+#endif
+
   for (auto _ : state) {
     ::radix_hash_bf4<std::string,uint64_t>(src.begin(),
                                            src.end(), dst.begin(),
                                            ::compute_power(size),
                                            state.range(1), 0, cores);
   }
+#ifdef HAVE_PAPI
+  assert(PAPI_stop_counters(papi_values, e_num) == PAPI_OK);
+  state.counters["L1 miss"] = papi_values[0];
+  state.counters["L2 miss"] = papi_values[1];
+  state.counters["L3 miss"] = papi_values[2];
+#endif
+
   getrusage(RUSAGE_SELF, &u_after);
   state.SetComplexityN(state.range(0));
   state.counters["Minor"] = u_after.ru_minflt - u_before.ru_minflt;
@@ -96,12 +146,23 @@ static void BM_radix_hash_bf5_str(benchmark::State& state) {
   struct rusage u_before, u_after;
   getrusage(RUSAGE_SELF, &u_before);
 
+#ifdef HAVE_PAPI
+  assert(PAPI_start_counters(events, e_num) == PAPI_OK);
+#endif
+
   for (auto _ : state) {
     ::radix_hash_bf5<std::string,uint64_t>(src.begin(),
                                            src.end(), dst.begin(),
                                            ::compute_power(size),
                                            state.range(1), 0, cores);
   }
+#ifdef HAVE_PAPI
+  assert(PAPI_stop_counters(papi_values, e_num) == PAPI_OK);
+  state.counters["L1 miss"] = papi_values[0];
+  state.counters["L2 miss"] = papi_values[1];
+  state.counters["L3 miss"] = papi_values[2];
+#endif
+
   getrusage(RUSAGE_SELF, &u_after);
   state.SetComplexityN(state.range(0));
   state.counters["Minor"] = u_after.ru_minflt - u_before.ru_minflt;
@@ -117,11 +178,22 @@ static void BM_radix_hash_bf6_str(benchmark::State& state) {
   struct rusage u_before, u_after;
   getrusage(RUSAGE_SELF, &u_before);
 
+#ifdef HAVE_PAPI
+  assert(PAPI_start_counters(events, e_num) == PAPI_OK);
+#endif
+
   for (auto _ : state) {
     ::radix_hash_bf6<std::string,uint64_t>(src.begin(),
                                            src.end(), dst.begin(),
                                            state.range(1), 0, cores);
   }
+#ifdef HAVE_PAPI
+  assert(PAPI_stop_counters(papi_values, e_num) == PAPI_OK);
+  state.counters["L1 miss"] = papi_values[0];
+  state.counters["L2 miss"] = papi_values[1];
+  state.counters["L3 miss"] = papi_values[2];
+#endif
+
   getrusage(RUSAGE_SELF, &u_after);
 
   state.SetComplexityN(state.range(0));
@@ -137,6 +209,10 @@ static void BM_tbb_sort_string(benchmark::State& state) {
   struct rusage u_before, u_after;
   getrusage(RUSAGE_SELF, &u_before);
 
+#ifdef HAVE_PAPI
+  assert(PAPI_start_counters(events, e_num) == PAPI_OK);
+#endif
+
   for (auto _ : state) {
     for (int i = 0; i < size; i++) {
       std::get<0>(dst[i]) = std::hash<std::string>{}(std::get<0>(src[i]));
@@ -145,6 +221,13 @@ static void BM_tbb_sort_string(benchmark::State& state) {
     }
     tbb::parallel_sort(dst.begin(), dst.end(), str_tuple_cmp);
   }
+#ifdef HAVE_PAPI
+  assert(PAPI_stop_counters(papi_values, e_num) == PAPI_OK);
+  state.counters["L1 miss"] = papi_values[0];
+  state.counters["L2 miss"] = papi_values[1];
+  state.counters["L3 miss"] = papi_values[2];
+#endif
+
   getrusage(RUSAGE_SELF, &u_after);
   state.SetComplexityN(state.range(0));
   state.counters["Minor"] = u_after.ru_minflt - u_before.ru_minflt;
@@ -159,6 +242,10 @@ static void BM_pdqsort_string(benchmark::State& state) {
   struct rusage u_before, u_after;
   getrusage(RUSAGE_SELF, &u_before);
 
+#ifdef HAVE_PAPI
+  assert(PAPI_start_counters(events, e_num) == PAPI_OK);
+#endif
+
   for (auto _ : state) {
     for (int i = 0; i < size; i++) {
       std::get<0>(dst[i]) = std::hash<std::string>{}(std::get<0>(src[i]));
@@ -167,6 +254,13 @@ static void BM_pdqsort_string(benchmark::State& state) {
     }
     pdqsort(dst.begin(), dst.end(), str_tuple_cmp);
   }
+#ifdef HAVE_PAPI
+  assert(PAPI_stop_counters(papi_values, e_num) == PAPI_OK);
+  state.counters["L1 miss"] = papi_values[0];
+  state.counters["L2 miss"] = papi_values[1];
+  state.counters["L3 miss"] = papi_values[2];
+#endif
+
   getrusage(RUSAGE_SELF, &u_after);
 
   state.SetComplexityN(state.range(0));
