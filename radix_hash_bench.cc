@@ -178,7 +178,7 @@ static void BM_pdqsort_string(benchmark::State& state) {
 
 static void RadixArguments(benchmark::internal::Benchmark* b) {
   for (int i = 11; i < 12; i+=1) {
-    for (int j = (1 << 18); j <= (1UL << 23); j <<= 1) {
+    for (int j = (1 << 18); j <= (1 << 23); j <<= 1) {
       b->Args({j, i});
     }
   }

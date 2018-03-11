@@ -16,16 +16,16 @@ AC_PROG_CC_C99
 
 AX_PTHREAD
 
-AC_CHECK_DECL([pthread_barrier_wait],
-              [AC_DEFINE([HAS_PTHREAD_BARRIER], [1],
-                         [Define to 1 if pthread_barrier_wait is
-                          available.])],
-              [AC_DEFINE([HAS_PTHREAD_BARRIER], [0],
-                         [Define to 1 if pthread_barrier_wait is
-                          available.])],
-              [[#include <pthread.h>]])
+AC_ARG_WITH([papi], AS_HELP_STRING([--with-papi],
+  [Enable papi hardware counters in benchmark]))
 
-# TODO: use pkgconfig to detect papi
+AS_IF([test "x$with_papi" = "xyes"],
+      [PKG_CHECK_MODULES([PAPI],
+        [papi >= 5],
+        [
+          AC_DEFINE([HAVE_PAPI], [1], [Define if papi is found])
+        ]
+      )])
 
 AC_CONFIG_FILES([Makefile])
 AC_CONFIG_SUBDIRS([googletest])

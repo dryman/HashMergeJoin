@@ -165,18 +165,18 @@ template <typename Key,
       counters[(h & mask) >> shift]++;
     }
     prev_idx = counter_stack[i][iter_stack[i]];
-    for (int j = 1; j < partitions; j++) {
+    for (unsigned int j = 1; j < partitions; j++) {
       counters[j] += counters[j - 1];
     }
-    for (int j = partitions; j != 0; j--) {
+    for (unsigned int j = partitions; j != 0; j--) {
       counters[j] = counters[j - 1] + prev_idx;;
     }
     counters[0] = prev_idx;
 
     if (i < num_iter - 2) {
-      for (int j = 0; j < partitions + 1; j++)
+      for (unsigned int j = 0; j < partitions + 1; j++)
         counter_stack[i + 1][j] = counters[j];
-      for (int j = counter_stack[i][iter_stack[i]];
+      for (unsigned int j = counter_stack[i][iter_stack[i]];
            j < counter_stack[i][iter_stack[i] + 1];
            j++) {
         h = std::get<0>(buffers[i & 1][j]);
@@ -185,7 +185,7 @@ template <typename Key,
       }
       i++;
     } else {
-      for (int j = counter_stack[i][iter_stack[i]];
+      for (unsigned int j = counter_stack[i][iter_stack[i]];
            j < counter_stack[i][iter_stack[i] + 1];
            j++) {
         h = std::get<0>(buffers[i & 1][j]);
@@ -821,7 +821,7 @@ template <typename Key,
 
   // TODO change s to a atomic variable and use a boolean to determine
   // to use it or not.
-  for (int s = 0; s < partitions; s++) {
+  for (unsigned int s = 0; s < partitions; s++) {
     s_begin = super_indexes[s][0];
     s_end = super_indexes[s][1];
     if (s_end - s_begin < 2)
@@ -834,14 +834,14 @@ template <typename Key,
       continue;
     }
     // Setup counters for counting sort.
-    for (int i = 0; i < partitions; i++)
+    for (unsigned int i = 0; i < partitions; i++)
       counters[i] = 0;
     indexes[0][0] = s_begin;
     for (unsigned int i = s_begin; i < s_end; i++) {
       h = std::get<0>(dst[i]);
       counters[(h & mask) >> shift]++;
     }
-    for (int i = 0; i < partitions - 1; i++) {
+    for (unsigned int i = 0; i < partitions - 1; i++) {
       indexes[i][1] = indexes[i+1][0] = indexes[i][0] + counters[i];
     }
     indexes[partitions-1][1] = indexes[partitions-1][0]
@@ -876,7 +876,7 @@ template <typename Key,
       continue;
     // Reset indexes
     indexes[0][0] = s_begin;
-    for (int i = 1; i < partitions; i++) {
+    for (unsigned int i = 1; i < partitions; i++) {
       indexes[i][0] = indexes[i-1][1];
     }
     bf3_helper<Key,Value,RandomAccessIterator>
@@ -895,12 +895,10 @@ template <typename Key,
       int mask_bits,
       int partition_bits,
       int nosort_bits) {
-  int input_num, num_iter, shift, dst_idx;
-  int partitions = 1 << partition_bits;
+  unsigned int shift, dst_idx;
+  unsigned int partitions = 1 << partition_bits;
   std::size_t h, mask;
   int new_mask_bits;
-
-  input_num = std::distance(begin, end);
 
   if (mask_bits <= nosort_bits) {
     for (auto iter = begin; iter != end; iter++) {
@@ -913,8 +911,6 @@ template <typename Key,
     return;
   }
 
-  num_iter = (mask_bits - nosort_bits
-              + partition_bits - 1) / partition_bits;
   mask = (1ULL << mask_bits) - 1;
   shift = mask_bits - partition_bits;
   shift = shift < 0 ? 0 : shift;
@@ -923,7 +919,7 @@ template <typename Key,
   unsigned int counters[partitions];
   unsigned int indexes[partitions][2];
 
-  for (int i = 0; i < partitions + 1; i++)
+  for (unsigned int i = 0; i < partitions + 1; i++)
     counters[i] = 0;
 
   for (auto iter = begin; iter != end; ++iter) {
@@ -932,7 +928,7 @@ template <typename Key,
   }
 
   indexes[0][0] = 0;
-  for (int i = 0; i < partitions - 1; i++) {
+  for (unsigned int i = 0; i < partitions - 1; i++) {
     indexes[i][1] = indexes[i+1][0] = indexes[i][0] + counters[i];
   }
   indexes[partitions-1][1] = indexes[partitions-1][0]
@@ -951,7 +947,7 @@ template <typename Key,
     return;
 
   indexes[0][0] = 0;
-  for (int i = 1; i < partitions; i++) {
+  for (unsigned int i = 1; i < partitions; i++) {
     indexes[i][0] = indexes[i-1][1];
   }
 
@@ -1001,14 +997,14 @@ template <typename Key,
       continue;
     }
     // Setup counters for counting sort.
-    for (int i = 0; i < partitions; i++)
+    for (unsigned int i = 0; i < partitions; i++)
       counters[i] = 0;
     indexes[0][0] = s_begin;
     for (unsigned int i = s_begin; i < s_end; i++) {
       h = std::get<0>(dst[i]);
       counters[(h & mask) >> shift]++;
     }
-    for (int i = 0; i < partitions - 1; i++) {
+    for (unsigned int i = 0; i < partitions - 1; i++) {
       indexes[i][1] = indexes[i+1][0] = indexes[i][0] + counters[i];
     }
     indexes[partitions-1][1] = indexes[partitions-1][0]
@@ -1045,7 +1041,7 @@ template <typename Key,
     }
     // Reset indexes
     indexes[0][0] = s_begin;
-    for (int i = 1; i < partitions; i++) {
+    for (unsigned int i = 1; i < partitions; i++) {
       indexes[i][0] = indexes[i-1][1];
     }
     bf3_helper<Key,Value,RandomAccessIterator>
@@ -1072,7 +1068,7 @@ template<typename Key,
   std::size_t h;
   int dst_idx;
   int local_counters[partitions];
-  for (int i = 0; i < partitions; i++)
+  for (unsigned int i = 0; i < partitions; i++)
     local_counters[i] = 0;
 
   // TODO maybe we can make no sort version in worker as well.
@@ -1424,7 +1420,7 @@ template <typename Key,
   unsigned int counters[partitions];
   unsigned int indexes[partitions][2];
 
-  for (int s = 0; s < partitions; s++) {
+  for (unsigned int s = 0; s < partitions; s++) {
     s_begin = super_indexes[s][0];
     s_end = super_indexes[s][1];
     if (s_end - s_begin < 2)
@@ -1435,14 +1431,14 @@ template <typename Key,
       continue;
     }
     // Setup counters for counting sort.
-    for (int i = 0; i < partitions; i++)
+    for (unsigned int i = 0; i < partitions; i++)
       counters[i] = 0;
     indexes[0][0] = s_begin;
     for (unsigned int i = s_begin; i < s_end; i++) {
       h = std::get<0>(dst[i]);
       counters[(h & mask) >> shift]++;
     }
-    for (int i = 0; i < partitions - 1; i++) {
+    for (unsigned int i = 0; i < partitions - 1; i++) {
       indexes[i][1] = indexes[i+1][0] = indexes[i][0] + counters[i];
     }
     indexes[partitions-1][1] = indexes[partitions-1][0]
@@ -1477,7 +1473,7 @@ template <typename Key,
 
     // Reset indexes
     indexes[0][0] = s_begin;
-    for (int i = 1; i < partitions; i++) {
+    for (unsigned int i = 1; i < partitions; i++) {
       indexes[i][0] = indexes[i-1][1];
     }
     bf6_helper_s<Key,Value,RandomAccessIterator>
@@ -1526,14 +1522,14 @@ template <typename Key,
       continue;
     }
     // Setup counters for counting sort.
-    for (int i = 0; i < partitions; i++)
+    for (unsigned int i = 0; i < partitions; i++)
       counters[i] = 0;
     indexes[0][0] = s_begin;
     for (unsigned int i = s_begin; i < s_end; i++) {
       h = std::get<0>(dst[i]);
       counters[(h & mask) >> shift]++;
     }
-    for (int i = 0; i < partitions - 1; i++) {
+    for (unsigned int i = 0; i < partitions - 1; i++) {
       indexes[i][1] = indexes[i+1][0] = indexes[i][0] + counters[i];
     }
     indexes[partitions-1][1] = indexes[partitions-1][0]
@@ -1570,7 +1566,7 @@ template <typename Key,
 
     // Reset indexes
     indexes[0][0] = s_begin;
-    for (int i = 1; i < partitions; i++) {
+    for (unsigned int i = 1; i < partitions; i++) {
       indexes[i][0] = indexes[i-1][1];
     }
     bf6_helper_s<Key,Value,RandomAccessIterator>
