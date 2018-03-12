@@ -43,16 +43,21 @@ class HashMergeJoin {
     r_size = std::distance(r_begin, r_end);
     s_size = std::distance(s_begin, s_end);
 
-    std::vector<std::tuple<std::size_t, Key, RValue>>r_sorted(r_size);
-    ::radix_hash_bf6<Key, RValue>(r_begin, r_end, r_sorted.begin(),
+    /* std::vector<std::tuple<std::size_t, Key, RValue>>r_sorted(r_size); */
+    /* std::vector<std::tuple<std::size_t, Key, SValue>>s_sorted(s_size); */
+
+    _r_sorted = std::vector<std::tuple<std::size_t, Key, RValue>>(r_size);
+    _s_sorted = std::vector<std::tuple<std::size_t, Key, RValue>>(s_size);
+
+
+    ::radix_hash_bf6<Key, RValue>(r_begin, r_end, _r_sorted.begin(),
                                   11, 0, cores);
 
-    std::vector<std::tuple<std::size_t, Key, SValue>>s_sorted(s_size);
-    ::radix_hash_bf6<Key, SValue>(s_begin, s_end, s_sorted.begin(),
+    ::radix_hash_bf6<Key, SValue>(s_begin, s_end, _s_sorted.begin(),
                                   11, 0, cores);
 
-    _r_sorted = r_sorted;
-    _s_sorted = s_sorted;
+    /* _r_sorted = r_sorted; */
+    /* _s_sorted = s_sorted; */
   }
 
   class iterator : std::iterator<std::input_iterator_tag,
