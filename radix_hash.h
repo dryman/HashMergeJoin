@@ -854,7 +854,7 @@ template <typename Key,
         iter++;
         continue;
       }
-      tmp_bucket = dst[idx_i];
+      tmp_bucket = std::move(dst[idx_i]);
       do {
         h = std::get<0>(tmp_bucket);
         idx_c = (h & mask) >> shift;
@@ -1017,7 +1017,7 @@ template <typename Key,
         iter++;
         continue;
       }
-      tmp_bucket = dst[idx_i];
+      tmp_bucket = std::move(dst[idx_i]);
       do {
         h = std::get<0>(tmp_bucket);
         idx_c = (h & mask) >> shift;
@@ -1730,7 +1730,7 @@ template <typename Key,
       iter++;
       continue;
     }
-    tmp_bucket = dst[idx_i];
+    tmp_bucket = std::move(dst[idx_i]);
     do {
       h = std::get<0>(tmp_bucket);
       idx_c = h  >> shift;
@@ -1837,7 +1837,7 @@ template<typename Key,
       (*shared_counters)[iter].store(new_val, std::memory_order_release);
       continue;
     }
-    tmp_bucket = dst[idx_i];
+    tmp_bucket = std::move(dst[idx_i]);
     (*shared_counters)[iter].fetch_and(~(1ULL<<31), std::memory_order_release);
 
     while (true) {
@@ -1860,7 +1860,7 @@ template<typename Key,
              std::memory_order_acq_rel)) {
           goto inner_reload_2;
         }
-        dst[idx_j] = tmp_bucket;
+        dst[idx_j] = std::move(tmp_bucket);
         break;
       }
       assert(unsort == sort);
