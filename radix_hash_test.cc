@@ -846,3 +846,76 @@ TEST(radix_hash_bf6_test, multi_pass_large_num3) {
     EXPECT_EQ(i + 1, std::get<0>(dst[i]));
   }
 }
+
+TEST(radix_hash_bf7_test, full_sort) {
+  std::vector<std::tuple<std::size_t, int, int>> dst;
+  for (int i = 4; i > -1; i--) {
+    dst.push_back(std::make_tuple((std::size_t)i, i, i));
+  }
+  ::radix_hash_bf7<int,int>(dst.begin(), 5, 3);
+  EXPECT_EQ(0, std::get<0>(dst[0]));
+  EXPECT_EQ(1, std::get<0>(dst[1]));
+  EXPECT_EQ(2, std::get<0>(dst[2]));
+  EXPECT_EQ(3, std::get<0>(dst[3]));
+  EXPECT_EQ(4, std::get<0>(dst[4]));
+}
+
+TEST(radix_hash_bf7_test, multi_pass_sort) {
+  std::vector<std::tuple<std::size_t, int, int>> dst;
+  for (int i = 5; i > 0; i--) {
+    dst.push_back(std::make_tuple((std::size_t)i, i, i));
+  }
+  ::radix_hash_bf7<int,int>(dst.begin(), 5, 1);
+  EXPECT_EQ(1, std::get<0>(dst[0]));
+  EXPECT_EQ(2, std::get<0>(dst[1]));
+  EXPECT_EQ(3, std::get<0>(dst[2]));
+  EXPECT_EQ(4, std::get<0>(dst[3]));
+  EXPECT_EQ(5, std::get<0>(dst[4]));
+}
+
+TEST(radix_hash_bf7_test, multi_pass_sort2) {
+  std::vector<std::tuple<std::size_t, int, int>> dst;
+  for (int i = 5; i > 0; i--) {
+    dst.push_back(std::make_tuple((std::size_t)i, i, i));
+  }
+  ::radix_hash_bf7<int,int>(dst.begin(), 5, 2);
+  EXPECT_EQ(1, std::get<0>(dst[0]));
+  EXPECT_EQ(2, std::get<0>(dst[1]));
+  EXPECT_EQ(3, std::get<0>(dst[2]));
+  EXPECT_EQ(4, std::get<0>(dst[3]));
+  EXPECT_EQ(5, std::get<0>(dst[4]));
+}
+
+TEST(radix_hash_bf7_test, multi_pass_large_num) {
+  std::vector<std::tuple<std::size_t, int, int>> dst;
+  for (int i = 12345; i > 0; i--) {
+    dst.push_back(std::make_tuple((std::size_t)i, i, i));
+  }
+  ::radix_hash_bf7<int,int>(dst.begin(), 12345, 1);
+  for (int i = 0; i < 12345; i++) {
+    EXPECT_EQ(i + 1, std::get<0>(dst[i]));
+  }
+}
+
+TEST(radix_hash_bf7_test, multi_pass_large_num2) {
+  std::vector<std::tuple<std::size_t, int, int>> dst;
+  for (int i = 12345; i > 0; i--) {
+    dst.push_back(std::make_tuple((std::size_t)i, i, i));
+  }
+  ::radix_hash_bf7<int,int>(dst.begin(), 12345, 5);
+  for (int i = 0; i < 12345; i++) {
+    EXPECT_EQ(i + 1, std::get<0>(dst[i]));
+  }
+}
+
+TEST(radix_hash_bf7_test, multi_pass_large_num3) {
+  int size = 1 << 18;
+  std::vector<std::tuple<std::size_t, int, int>> dst;
+  for (int i = size; i > 0; i--) {
+    dst.push_back(std::make_tuple((std::size_t)i, i, i));
+  }
+  ::radix_hash_bf7<int,int>(dst.begin(), size, 10);
+  for (int i = 0; i < size; i++) {
+    EXPECT_EQ(i + 1, std::get<0>(dst[i]));
+  }
+}
