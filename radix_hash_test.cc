@@ -919,3 +919,17 @@ TEST(radix_hash_bf7_test, multi_pass_large_num3) {
     EXPECT_EQ(i + 1, std::get<0>(dst[i]));
   }
 }
+
+
+
+TEST(radix_hash_bf8_test, multi_pass_large_num3) {
+  int size = 1 << 18;
+  std::vector<std::tuple<std::size_t, int, int>> dst;
+  for (int i = size; i > 0; i--) {
+    dst.push_back(std::make_tuple((std::size_t)i, i, i));
+  }
+  ::radix_hash_bf8<int,int>(dst.begin(), size, 10, 4);
+  for (int i = 0; i < size; i++) {
+    EXPECT_EQ(i + 1, std::get<0>(dst[i]));
+  }
+}

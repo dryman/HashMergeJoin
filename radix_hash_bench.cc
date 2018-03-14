@@ -424,6 +424,44 @@ static void BM_bf7(benchmark::State& state) {
   state.counters["Swap"] = u_after.ru_nswap - u_before.ru_nswap;
 }
 
+static void BM_bf8(benchmark::State& state) {
+  int size = state.range(0);
+  std::vector<std::tuple<std::size_t, std::string, uint64_t>> dst(size);
+  unsigned int cores = std::thread::hardware_concurrency();
+  auto src = ::create_strvec(size);
+  struct rusage u_before, u_after;
+  getrusage(RUSAGE_SELF, &u_before);
+
+#ifdef HAVE_PAPI
+  assert(PAPI_start_counters(events, e_num) == PAPI_OK);
+#endif
+
+  for (auto _ : state) {
+    state.PauseTiming();
+    for (int i = 0; i < size; i++) {
+      std::get<0>(dst[i]) = std::hash<std::string>{}(std::get<0>(src[i]));
+      std::get<1>(dst[i]) = std::get<0>(src[i]);
+      std::get<2>(dst[i]) = std::get<1>(src[i]);
+    }
+    state.ResumeTiming();
+    ::radix_hash_bf8<std::string,uint64_t>(dst.begin(),
+                                           state.range(0),
+                                           state.range(1), cores);
+  }
+#ifdef HAVE_PAPI
+  assert(PAPI_stop_counters(papi_values, e_num) == PAPI_OK);
+  state.counters["L1 miss"] = papi_values[0];
+  state.counters["L2 miss"] = papi_values[1];
+  state.counters["L3 miss"] = papi_values[2];
+#endif
+
+  getrusage(RUSAGE_SELF, &u_after);
+
+  state.SetComplexityN(state.range(0));
+  state.counters["Minor"] = u_after.ru_minflt - u_before.ru_minflt;
+  state.counters["Major"] = u_after.ru_majflt - u_before.ru_majflt;
+  state.counters["Swap"] = u_after.ru_nswap - u_before.ru_nswap;
+}
 
 /*
  * Note: breadth first search outperforms depth first search when
@@ -452,6 +490,9 @@ BENCHMARK(BM_bf6_1_thread)->Apply(RadixArguments)
 ->Complexity(benchmark::oN)->UseRealTime();
 
 BENCHMARK(BM_bf7)->Apply(RadixArguments)
+->Complexity(benchmark::oN)->UseRealTime();
+
+BENCHMARK(BM_bf8)->Apply(RadixArguments)
 ->Complexity(benchmark::oN)->UseRealTime();
 
 BENCHMARK_MAIN();

@@ -1751,4 +1751,182 @@ template <typename Key,
       partition_bits, &a_counter);
 }
 
+template<typename Key,
+  typename Value,
+  typename RandomAccessIterator>
+  void radix_hash_bf8_worker(RandomAccessIterator dst,
+                             unsigned int begin,
+                             unsigned int end,
+                             unsigned int thread_id,
+                             ThreadBarrier* barrier,
+                             std::vector<std::atomic_ullong>* shared_counters,
+                             std::vector<std::pair<unsigned int,
+                             unsigned int>>* indexes,
+                             unsigned int partitions,
+                             int shift) {
+  std::size_t h;
+  int local_counters[partitions];
+  unsigned long long old_val, new_val, unsort, sort, flag, counter_mask;
+  unsigned int iter, idx_i, idx_j, idx_c;
+  std::tuple<std::size_t, Key, Value> tmp_bucket;
+
+  for (unsigned int i = 0; i < partitions; i++)
+    local_counters[i] = 0;
+
+  for (unsigned i = begin; i < end; ++i) {
+    h = std::get<0>(dst[i]);
+    local_counters[h >> shift]++;
+  }
+  for (unsigned int i = 0; i < partitions; i++) {
+    (*shared_counters)[i].fetch_add(local_counters[i],
+                                    std::memory_order_relaxed);
+  }
+
+  // in barrier
+  if (barrier->wait()) {
+    local_counters[0] = 0;
+    (*indexes)[0].first = 0;
+    for (unsigned int i = 0; i < partitions - 1; i++) {
+      local_counters[i+1] =
+        (*indexes)[i].second =
+        (*indexes)[i+1].first = (*indexes)[i].first +
+        (*shared_counters)[i].load(std::memory_order_relaxed);
+    }
+    (*indexes)[partitions-1].second = (*indexes)[partitions-1].first
+      + (*shared_counters)[partitions-1].load(std::memory_order_relaxed);
+    for (unsigned int i = 0; i < partitions; i++) {
+      new_val = (((uint64_t)local_counters[i]) << 32) + local_counters[i];
+      (*shared_counters)[i].store(new_val, std::memory_order_relaxed);
+    }
+    barrier->wait();
+  } else {
+    barrier->wait();
+  }
+
+  iter = thread_id % partitions;
+  counter_mask = ~(1ULL << 32);
+  while (iter < partitions) {
+    old_val = (*shared_counters)[iter].load(std::memory_order_acquire);
+  outer_reload:
+    unsort = old_val & counter_mask;
+    flag = (old_val >> 31) & 1;
+    sort = old_val >> 32;
+    if (flag)
+      continue;
+    if (unsort >= (*indexes)[iter].second ||
+        sort >= (*indexes)[iter].second) {
+      iter++;
+      continue;
+    }
+    idx_i = unsort++;
+    flag = 1;
+    new_val = (sort << 32) | (flag << 31) | unsort;
+    if (!(*shared_counters)[iter].compare_exchange_strong
+        (old_val, new_val,
+         std::memory_order_acq_rel,
+         std::memory_order_acq_rel)) {
+      goto outer_reload;
+    }
+    old_val = new_val;
+    h = std::get<0>(dst[idx_i]);
+    idx_c = h >> shift;
+    if (idx_c == iter) {
+      sort++;
+      flag = 0;
+      new_val = (sort << 32) | unsort;
+      (*shared_counters)[iter].store(new_val, std::memory_order_release);
+      continue;
+    }
+    tmp_bucket = dst[idx_i];
+    (*shared_counters)[iter].fetch_and(~(1ULL<<31), std::memory_order_release);
+
+    while (true) {
+      h = std::get<0>(tmp_bucket);
+      idx_c = h >> shift;
+    inner_reload_1:
+      old_val = (*shared_counters)[idx_c].load(std::memory_order_acquire);
+    inner_reload_2:
+      unsort = old_val & counter_mask;
+      flag = (old_val >> 31) & 1;
+      sort = old_val >> 32;
+      if (flag)
+        goto inner_reload_1;
+      if (unsort > sort) {
+        idx_j = sort++;
+        new_val = (sort << 32) | unsort;
+        if (!(*shared_counters)[idx_c].compare_exchange_strong
+            (old_val, new_val,
+             std::memory_order_acq_rel,
+             std::memory_order_acq_rel)) {
+          goto inner_reload_2;
+        }
+        dst[idx_j] = tmp_bucket;
+        break;
+      }
+      assert(unsort == sort);
+      idx_j = sort++;
+      unsort++;
+      new_val = (sort << 32) | unsort;
+      if (!(*shared_counters)[idx_c].compare_exchange_strong
+          (old_val, new_val,
+           std::memory_order_acq_rel,
+           std::memory_order_acq_rel)) {
+        goto inner_reload_2;
+      }
+      std::swap(tmp_bucket, dst[idx_j]);
+    }
+  }
+}
+
+template <typename Key,
+  typename Value,
+  typename RandomAccessIterator>
+  void radix_hash_bf8(RandomAccessIterator dst,
+                      unsigned int input_num,
+                      int partition_bits,
+                      int num_threads) {
+  int shift, partitions, thread_partition, new_mask_bits;
+  std::atomic_uint a_counter(0);
+  ThreadBarrier barrier(num_threads);
+
+  partitions = 1 << partition_bits;
+  thread_partition = input_num / num_threads;
+
+  shift = 64 - partition_bits;
+
+  std::vector<std::atomic_ullong> shared_counters(partitions);
+  std::vector<std::pair<unsigned int, unsigned int>> indexes(partitions);
+  std::vector<std::thread> threads(num_threads);
+
+  for (int i = 0; i < num_threads-1; i++) {
+    threads[i] = std::thread(radix_hash_bf8_worker<Key,Value,
+                             RandomAccessIterator>,
+                             dst, i * thread_partition,
+                             (i+1) * thread_partition,
+                             i, &barrier, &shared_counters, &indexes,
+                             partitions, shift);
+  }
+
+  radix_hash_bf8_worker<Key,Value>(dst, (num_threads-1)*thread_partition, input_num,
+                                   num_threads-1, &barrier,
+                                   &shared_counters, &indexes,
+                                   partitions, shift);
+  for (int i = 0; i < num_threads-1; i++) {
+    threads[i].join();
+  }
+
+  new_mask_bits = 64 - partition_bits;
+
+  for (int i = 0; i < num_threads-1; i++) {
+    threads[i] = std::thread(bf6_helper_p<Key,Value, RandomAccessIterator>,
+                             dst, indexes, new_mask_bits,
+                             partition_bits, &a_counter);
+  }
+  bf6_helper_p<Key,Value, RandomAccessIterator>(
+      dst, indexes, new_mask_bits,
+      partition_bits, &a_counter);
+  for (int i = 0; i < num_threads-1; i++) {
+    threads[i].join();
+  }
+}
 #endif
