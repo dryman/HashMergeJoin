@@ -2,6 +2,7 @@
 #include "gtest/gtest.h"
 #include <vector>
 #include <string>
+#include <random>
 
 struct identity_hash
 {
@@ -9,6 +10,17 @@ struct identity_hash
     return k;
   }
 };
+
+bool tuple_cmp (std::tuple<std::size_t, int, int> a,
+                std::tuple<std::size_t, int, int> b) {
+  return std::get<0>(a) < std::get<0>(b);
+}
+
+bool str_tuple_cmp (std::tuple<std::size_t, std::string, uint64_t> a,
+                    std::tuple<std::size_t, std::string, uint64_t> b) {
+  return std::get<0>(a) < std::get<0>(b);
+}
+
 /*
 
 TEST(radix_hash_df1_test, no_sort) {
@@ -920,6 +932,24 @@ TEST(radix_hash_bf7_test, multi_pass_large_num3) {
   }
 }
 
+TEST(radix_hash_bf7_test, random_num) {
+  int size = 1 << 16;
+  std::vector<std::tuple<std::size_t, int, int>> input;
+  std::vector<std::tuple<std::size_t, int, int>> std_sorted;
+  std::default_random_engine generator;
+  std::uniform_int_distribution<std::size_t> distribution;
+  for (int i = 0; i < size; i++) {
+    std::size_t r = distribution(generator);
+    input.push_back(std::make_tuple(r, i, i));
+  }
+  std_sorted = input;
+  std::sort(std_sorted.begin(), std_sorted.end(), tuple_cmp);
+
+  ::radix_hash_bf7<int,int>(input.begin(), size, 10);
+  for (int i = 0; i < size; i++) {
+    EXPECT_EQ(std::get<0>(std_sorted[i]), std::get<0>(input[i]));
+  }
+}
 
 
 TEST(radix_hash_bf8_test, multi_pass_large_num3) {
@@ -931,5 +961,24 @@ TEST(radix_hash_bf8_test, multi_pass_large_num3) {
   ::radix_hash_bf8<int,int>(dst.begin(), size, 10, 4);
   for (int i = 0; i < size; i++) {
     EXPECT_EQ(i + 1, std::get<0>(dst[i]));
+  }
+}
+
+TEST(radix_hash_bf8_test, random_num) {
+  int size = 5;
+  std::vector<std::tuple<std::size_t, int, int>> input;
+  std::vector<std::tuple<std::size_t, int, int>> std_sorted;
+  std::default_random_engine generator;
+  std::uniform_int_distribution<std::size_t> distribution;
+  for (int i = 0; i < size; i++) {
+    std::size_t r = distribution(generator);
+    input.push_back(std::make_tuple(r, i, i));
+  }
+  std_sorted = input;
+  std::sort(std_sorted.begin(), std_sorted.end(), tuple_cmp);
+
+  ::radix_hash_bf8<int,int>(input.begin(), size, 10, 1);
+  for (int i = 0; i < size; i++) {
+    EXPECT_EQ(std::get<0>(std_sorted[i]), std::get<0>(input[i]));
   }
 }
