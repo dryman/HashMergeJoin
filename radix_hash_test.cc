@@ -965,11 +965,12 @@ TEST(radix_hash_bf8_test, multi_pass_large_num3) {
 }
 
 TEST(radix_hash_bf8_test, random_num) {
-  int size = 5;
+  int size = 1<<16;
   std::vector<std::tuple<std::size_t, int, int>> input;
   std::vector<std::tuple<std::size_t, int, int>> std_sorted;
   std::default_random_engine generator;
   std::uniform_int_distribution<std::size_t> distribution;
+  unsigned int cores = std::thread::hardware_concurrency();
   for (int i = 0; i < size; i++) {
     std::size_t r = distribution(generator);
     input.push_back(std::make_tuple(r, i, i));
@@ -977,7 +978,7 @@ TEST(radix_hash_bf8_test, random_num) {
   std_sorted = input;
   std::sort(std_sorted.begin(), std_sorted.end(), tuple_cmp);
 
-  ::radix_hash_bf8<int,int>(input.begin(), size, 10, 1);
+  ::radix_hash_bf8<int,int>(input.begin(), size, 11, cores);
   for (int i = 0; i < size; i++) {
     EXPECT_EQ(std::get<0>(std_sorted[i]), std::get<0>(input[i]));
   }

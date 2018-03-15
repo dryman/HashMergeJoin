@@ -1773,7 +1773,7 @@ template<typename Key,
   for (unsigned int i = 0; i < partitions; i++)
     local_counters[i] = 0;
 
-  for (unsigned i = begin; i < end; ++i) {
+  for (unsigned int i = begin; i < end; ++i) {
     h = std::get<0>(dst[i]);
     local_counters[h >> shift]++;
   }
@@ -1795,7 +1795,8 @@ template<typename Key,
     (*indexes)[partitions-1].second = (*indexes)[partitions-1].first
       + (*shared_counters)[partitions-1].load(std::memory_order_relaxed);
     for (unsigned int i = 0; i < partitions; i++) {
-      new_val = (((uint64_t)local_counters[i]) << 32) + local_counters[i];
+      new_val = (((uint64_t)local_counters[i]) << 32) |
+        (uint64_t)local_counters[i];
       (*shared_counters)[i].store(new_val, std::memory_order_relaxed);
     }
     barrier->wait();
@@ -1803,8 +1804,8 @@ template<typename Key,
     barrier->wait();
   }
 
+  counter_mask = (1ULL << 31) - 1;
   iter = thread_id % partitions;
-  counter_mask = ~(1ULL << 32);
   while (iter < partitions) {
     old_val = (*shared_counters)[iter].load(std::memory_order_acquire);
   outer_reload:
@@ -1876,6 +1877,14 @@ template<typename Key,
       std::swap(tmp_bucket, dst[idx_j]);
     }
   }
+
+  /*
+  std::cout << "after sort:\n" << std::dec;
+  for (unsigned int i = begin; i < end; i++) {
+    h = std::get<0>(dst[i]);
+    std::cout << (h >> shift) << ": " << h << "\n";
+  }
+  */
 }
 
 template <typename Key,
@@ -1907,8 +1916,8 @@ template <typename Key,
                              partitions, shift);
   }
 
-  radix_hash_bf8_worker<Key,Value>(dst, (num_threads-1)*thread_partition, input_num,
-                                   num_threads-1, &barrier,
+  radix_hash_bf8_worker<Key,Value>(dst, (num_threads-1)*thread_partition,
+                                   input_num, num_threads-1, &barrier,
                                    &shared_counters, &indexes,
                                    partitions, shift);
   for (int i = 0; i < num_threads-1; i++) {
