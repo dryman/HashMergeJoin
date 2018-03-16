@@ -237,15 +237,15 @@ static void BM_radix_sort_1_multi(benchmark::State& state) {
     / state.iterations();
 }
 
-BENCHMARK(BM_std_sort_int)->Range(1<<20, 1<<28)->Complexity(benchmark::oN)
-->UseRealTime();
-BENCHMARK(BM_tbb_int)->Range(1<<20, 1<<28)->Complexity(benchmark::oN)
-->UseRealTime();
-BENCHMARK(BM_pdqsort_int)->Range(1<<20, 1<<28)->Complexity(benchmark::oN)
-->UseRealTime();
-BENCHMARK(BM_radix_sort_1_single)->Range(1<<20, 1<<28)
+BENCHMARK(BM_std_sort_int)->RangeMultiplier(2)->Range(1<<18, 1<<23)
 ->Complexity(benchmark::oN)->UseRealTime();
-BENCHMARK(BM_radix_sort_1_multi)->Range(1<<20, 1<<28)
+BENCHMARK(BM_tbb_int)->RangeMultiplier(2)->Range(1<<18, 1<<23)
+->Complexity(benchmark::oN)->UseRealTime();
+BENCHMARK(BM_pdqsort_int)->RangeMultiplier(2)->Range(1<<18, 1<<23)
+->Complexity(benchmark::oN)->UseRealTime();
+BENCHMARK(BM_radix_sort_1_single)->RangeMultiplier(2)->Range(1<<18, 1<<23)
+->Complexity(benchmark::oN)->UseRealTime();
+BENCHMARK(BM_radix_sort_1_multi)->RangeMultiplier(2)->Range(1<<18, 1<<23)
 ->Complexity(benchmark::oN)->UseRealTime();
 
 BENCHMARK_MAIN();
