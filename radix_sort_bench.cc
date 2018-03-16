@@ -14,14 +14,16 @@
 
 #ifdef HAVE_PAPI
 #include "papi.h"
-const int e_num = 3;
+const int e_num = 4;
 int events[e_num] = {
   PAPI_L1_DCM,
   PAPI_L2_DCM,
   PAPI_L3_TCM,
+  PAPI_TOT_INS,
 };
 long long papi_values[e_num];
 long long acc_values[e_num];
+char papi_error_str[PAPI_MAX_STR_LEN];
 
 #define RESET_ACC_COUNTERS do { \
   for (int i = 0; i < e_num; i++) \
@@ -29,7 +31,10 @@ long long acc_values[e_num];
   } while (0)
 
 #define START_COUNTERS do { \
-    assert(PAPI_start_counters(events, e_num) == PAPI_OK); \
+    if(PAPI_start_counters(events, e_num) != PAPI_OK) { \
+      PAPI_perror(papi_error_str); \
+      exit(1); \
+    } \
   } while (0)
 
 #define ACCUMULATE_COUNTERS do { \
@@ -42,6 +47,7 @@ long long acc_values[e_num];
   STATE.counters["L1 miss"] = acc_values[0] / STATE.iterations(); \
   STATE.counters["L2 miss"] = acc_values[1] / STATE.iterations(); \
   STATE.counters["L3 miss"] = acc_values[2] / STATE.iterations(); \
+  STATE.counters["instructions"] = acc_values[3] / STATE.iterations(); \
   } while (0)
 
 #else
@@ -286,6 +292,7 @@ BENCHMARK(BM_pdqsort_int)->RangeMultiplier(2)->Range(1<<18, 1<<23)
 
 /********************  radix sort 1 single ***********************/
 
+/*
 BENCHMARK(BM_radix_sort_1_single)
 ->Args({1<<18, 3})
 ->Args({1<<19, 3})
@@ -310,6 +317,7 @@ BENCHMARK(BM_radix_sort_1_single)
 ->Args({1<<21, 8})
 ->Args({1<<22, 8})
 ->Complexity(benchmark::oN)->UseRealTime();
+*/
 
 
 BENCHMARK(BM_radix_sort_1_single)
@@ -320,17 +328,17 @@ BENCHMARK(BM_radix_sort_1_single)
 ->Args({1<<22, 11})
 ->Complexity(benchmark::oN)->UseRealTime();
 
-BENCHMARK(BM_radix_sort_1_single)
-->Args({1<<18, 13})
-->Args({1<<19, 13})
-->Args({1<<20, 13})
-->Args({1<<21, 13})
-->Args({1<<22, 13})
-->Complexity(benchmark::oN)->UseRealTime();
+// BENCHMARK(BM_radix_sort_1_single)
+// ->Args({1<<18, 13})
+// ->Args({1<<19, 13})
+// ->Args({1<<20, 13})
+// ->Args({1<<21, 13})
+// ->Args({1<<22, 13})
+// ->Complexity(benchmark::oN)->UseRealTime();
 
 /********************  radix sort 1 multi ***********************/
 
-
+/*
 BENCHMARK(BM_radix_sort_1_multi)
 ->Args({1<<18, 3})
 ->Args({1<<19, 3})
@@ -355,7 +363,7 @@ BENCHMARK(BM_radix_sort_1_multi)
 ->Args({1<<21, 8})
 ->Args({1<<22, 8})
 ->Complexity(benchmark::oN)->UseRealTime();
-
+*/
 
 BENCHMARK(BM_radix_sort_1_multi)
 ->Args({1<<18, 11})
@@ -365,13 +373,13 @@ BENCHMARK(BM_radix_sort_1_multi)
 ->Args({1<<22, 11})
 ->Complexity(benchmark::oN)->UseRealTime();
 
-BENCHMARK(BM_radix_sort_1_multi)
-->Args({1<<18, 13})
-->Args({1<<19, 13})
-->Args({1<<20, 13})
-->Args({1<<21, 13})
-->Args({1<<22, 13})
-->Complexity(benchmark::oN)->UseRealTime();
+//BENCHMARK(BM_radix_sort_1_multi)
+//->Args({1<<18, 13})
+//->Args({1<<19, 13})
+//->Args({1<<20, 13})
+//->Args({1<<21, 13})
+//->Args({1<<22, 13})
+//->Complexity(benchmark::oN)->UseRealTime();
 
 /********************  radix sort 2 ***********************/
 
