@@ -2,17 +2,26 @@ AUTOMAKE_OPTIONS = subdir-objects
 
 ACLOCAL_AMFLAGS=-I m4
 #SUBDIRS = googletest
-TESTS = radix_hash_test leak_check strgen_test thread_barrier_test
-check_PROGRAMS = radix_hash_test leak_check strgen_test thread_barrier_test
+TESTS = radix_hash_test leak_check strgen_test thread_barrier_test radix_sort_test
+check_PROGRAMS = radix_hash_test leak_check strgen_test thread_barrier_test radix_sort_test
 
 radix_hash_test_SOURCES = radix_hash_test.cc radix_hash.h \
                           thread_barrier.h thread_barrier.cc
 radix_hash_test_CPPFLAGS = -isystem googletest/googletest/include
-radix_hash_test_CXXFLAGS = -std=c++14 -Wall @PTHREAD_CFLAGS@
+radix_hash_test_CXXFLAGS = -std=c++14 -Wall @PTHREAD_CFLAGS@ -Wextra
 radix_hash_test_LDADD = googletest/googletest/lib/libgtest.la \
 googletest/googletest/lib/libgtest_main.la \
 @PTHREAD_LIBS@
 radix_hash_test_LDFLAGS = -static
+
+radix_sort_test_SOURCES = radix_sort_test.cc radix_sort.h \
+                          thread_barrier.h thread_barrier.cc
+radix_sort_test_CPPFLAGS = -isystem googletest/googletest/include
+radix_sort_test_CXXFLAGS = -std=c++14 -Wall @PTHREAD_CFLAGS@ -fno-strict-aliasing
+radix_sort_test_LDADD = googletest/googletest/lib/libgtest.la \
+googletest/googletest/lib/libgtest_main.la \
+@PTHREAD_LIBS@
+radix_sort_test_LDFLAGS = -static
 
 leak_check_SOURCES = leak_check.cc
 leak_check_CPPFLAGS = -isystem googletest/googletest/include
@@ -48,14 +57,12 @@ buffer_latency_LDFLAGS = -lbenchmark
 
 radix_hash_bench_SOURCES = radix_hash_bench.cc strgen.cc radix_hash.h \
                            thread_barrier.h thread_barrier.cc
-radix_hash_bench_CPPFLAGS = -isystem DarwinPthreadBarrier/src
 radix_hash_bench_CXXFLAGS = -std=c++14 -Wall @PTHREAD_CFLAGS@ @PAPI_CFLAGS@
 radix_hash_bench_LDADD = @PTHREAD_LIBS@ @PAPI_LIBS@
 radix_hash_bench_LDFLAGS = -lbenchmark -ltbb -ltbbmalloc
 
 hashjoin_bench_SOURCES = hashjoin_bench.cc strgen.cc \
                          thread_barrier.h thread_barrier.cc
-hashjoin_bench_CPPFLAGS = -isystem DarwinPthreadBarrier/src
 hashjoin_bench_CXXFLAGS = -std=c++14 @PTHREAD_CFLAGS@ @PAPI_CFLAGS@
 hashjoin_bench_LDADD = @PTHREAD_LIBS@ @PAPI_LIBS@
 hashjoin_bench_LDFLAGS = -lbenchmark

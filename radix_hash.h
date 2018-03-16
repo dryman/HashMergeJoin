@@ -128,8 +128,6 @@ template <typename Key,
       continue;
     // Partition too small, use insertion sort instead.
     if (s_end - s_begin < sqrt_partitions) {
-      //std::cout << "Use insertion sort for "
-      //<< s_begin << ", " << s_end << "\n";
       bf3_insertion_outer<RandomAccessIterator>(dst, s_begin, s_end, mask);
       continue;
     }
@@ -241,15 +239,31 @@ template <typename Key,
     std::get<1>(dst[dst_idx]) = iter->first;
     std::get<2>(dst[dst_idx]) = iter->second;
   }
+  std::cout << "bf3 dst after first pass: ";
+  for (int i = 0; i < 5; i++) {
+    std::cout << std::get<0>(dst[i]) << ", ";
+  }
+  std::cout << "\n";
 
   new_mask_bits = mask_bits - partition_bits;
   if (new_mask_bits <= nosort_bits)
     return;
 
+  /*
+   * This logic should be equivalent to the one implemented below.
+   * Unfortunately on OSX clang-800.0.42.1 it optimizes it in a wrong
+   * way such that the conent in indexes are wrong.
   indexes[0][0] = 0;
   for (unsigned int i = 1; i < partitions; i++) {
     indexes[i][0] = indexes[i-1][1];
   }
+  */
+  indexes[0][0] = 0;
+  for (unsigned int i = 0; i < partitions - 1; i++) {
+    indexes[i][1] = indexes[i+1][0] = indexes[i][0] + counters[i];
+  }
+  indexes[partitions-1][1] = indexes[partitions-1][0]
+  + counters[partitions-1];
 
   bf3_helper<Key, Value, RandomAccessIterator>
   (dst, indexes, new_mask_bits, partition_bits, nosort_bits);
