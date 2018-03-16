@@ -16,8 +16,8 @@
 #include "papi.h"
 const int e_num = 3;
 int events[e_num] = {
-  PAPI_L1_DCM, 
-  PAPI_L2_DCM, 
+  PAPI_L1_DCM,
+  PAPI_L2_DCM,
   PAPI_L3_TCM,
 };
 long long papi_values[e_num];
