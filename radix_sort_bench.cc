@@ -185,7 +185,8 @@ static void BM_radix_sort_1_single(benchmark::State& state) {
     work = input;
     state.ResumeTiming();
     START_COUNTERS;
-    ::radix_sort_1<std::size_t, uint64_t>(work.begin(), size, 11, 1);
+    ::radix_sort_1<std::size_t, uint64_t>(work.begin(), size,
+                                          state.range(1), 1);
     ACCUMULATE_COUNTERS;
   }
   REPORT_COUNTERS(state);
@@ -222,7 +223,8 @@ static void BM_radix_sort_1_multi(benchmark::State& state) {
     work = input;
     state.ResumeTiming();
     START_COUNTERS;
-    ::radix_sort_1<std::size_t, uint64_t>(work.begin(), size, 11, cores);
+    ::radix_sort_1<std::size_t, uint64_t>(work.begin(), size,
+                                          state.range(1), cores);
     ACCUMULATE_COUNTERS;
   }
   REPORT_COUNTERS(state);
@@ -243,9 +245,89 @@ BENCHMARK(BM_tbb_int)->RangeMultiplier(2)->Range(1<<18, 1<<23)
 ->Complexity(benchmark::oN)->UseRealTime();
 BENCHMARK(BM_pdqsort_int)->RangeMultiplier(2)->Range(1<<18, 1<<23)
 ->Complexity(benchmark::oN)->UseRealTime();
-BENCHMARK(BM_radix_sort_1_single)->RangeMultiplier(2)->Range(1<<18, 1<<23)
+
+BENCHMARK(BM_radix_sort_1_single)
+->Args({1<<18, 3})
+->Args({1<<19, 3})
+->Args({1<<20, 3})
+->Args({1<<21, 3})
+->Args({1<<22, 3})
 ->Complexity(benchmark::oN)->UseRealTime();
-BENCHMARK(BM_radix_sort_1_multi)->RangeMultiplier(2)->Range(1<<18, 1<<23)
+
+BENCHMARK(BM_radix_sort_1_single)
+->Args({1<<18, 6})
+->Args({1<<19, 6})
+->Args({1<<20, 6})
+->Args({1<<21, 6})
+->Args({1<<22, 6})
+->Complexity(benchmark::oN)->UseRealTime();
+
+
+BENCHMARK(BM_radix_sort_1_single)
+->Args({1<<18, 8})
+->Args({1<<19, 8})
+->Args({1<<20, 8})
+->Args({1<<21, 8})
+->Args({1<<22, 8})
+->Complexity(benchmark::oN)->UseRealTime();
+
+
+BENCHMARK(BM_radix_sort_1_single)
+->Args({1<<18, 11})
+->Args({1<<19, 11})
+->Args({1<<20, 11})
+->Args({1<<21, 11})
+->Args({1<<22, 11})
+->Complexity(benchmark::oN)->UseRealTime();
+
+BENCHMARK(BM_radix_sort_1_single)
+->Args({1<<18, 13})
+->Args({1<<19, 13})
+->Args({1<<20, 13})
+->Args({1<<21, 13})
+->Args({1<<22, 13})
+->Complexity(benchmark::oN)->UseRealTime();
+
+BENCHMARK(BM_radix_sort_1_multi)
+->Args({1<<18, 3})
+->Args({1<<19, 3})
+->Args({1<<20, 3})
+->Args({1<<21, 3})
+->Args({1<<22, 3})
+->Complexity(benchmark::oN)->UseRealTime();
+
+BENCHMARK(BM_radix_sort_1_multi)
+->Args({1<<18, 6})
+->Args({1<<19, 6})
+->Args({1<<20, 6})
+->Args({1<<21, 6})
+->Args({1<<22, 6})
+->Complexity(benchmark::oN)->UseRealTime();
+
+
+BENCHMARK(BM_radix_sort_1_multi)
+->Args({1<<18, 8})
+->Args({1<<19, 8})
+->Args({1<<20, 8})
+->Args({1<<21, 8})
+->Args({1<<22, 8})
+->Complexity(benchmark::oN)->UseRealTime();
+
+
+BENCHMARK(BM_radix_sort_1_multi)
+->Args({1<<18, 11})
+->Args({1<<19, 11})
+->Args({1<<20, 11})
+->Args({1<<21, 11})
+->Args({1<<22, 11})
+->Complexity(benchmark::oN)->UseRealTime();
+
+BENCHMARK(BM_radix_sort_1_multi)
+->Args({1<<18, 13})
+->Args({1<<19, 13})
+->Args({1<<20, 13})
+->Args({1<<21, 13})
+->Args({1<<22, 13})
 ->Complexity(benchmark::oN)->UseRealTime();
 
 BENCHMARK_MAIN();
