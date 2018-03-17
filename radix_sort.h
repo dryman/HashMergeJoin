@@ -349,6 +349,7 @@ template<typename Key,
   }
 }
 
+// radix_sort_1 use insertion sort when input is smaller than sqrt(p)
 template <typename Key,
   typename Value,
   typename RandomAccessIterator>
@@ -584,6 +585,7 @@ template <typename Key,
   }
 }
 
+// radix_sort_2 use std::sort when input size is smaller than p.
 template <typename Key,
   typename Value,
   typename RandomAccessIterator>
