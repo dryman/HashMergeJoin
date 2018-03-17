@@ -10,46 +10,8 @@
 #include "strgen.h"
 #include "tbb/parallel_sort.h"
 #include "pdqsort/pdqsort.h"
-#include "config.h"
+#include "papi_setup.h"
 
-#ifdef HAVE_PAPI
-#include "papi.h"
-const int e_num = 3;
-int events[e_num] = {
-  PAPI_L1_DCM,
-  PAPI_L2_DCM,
-  PAPI_L3_TCM,
-};
-long long papi_values[e_num];
-long long acc_values[e_num];
-
-#define RESET_ACC_COUNTERS do { \
-  for (int i = 0; i < e_num; i++) \
-    acc_values[i] = 0; \
-  } while (0)
-
-#define START_COUNTERS do { \
-    assert(PAPI_start_counters(events, e_num) == PAPI_OK); \
-  } while (0)
-
-#define ACCUMULATE_COUNTERS do { \
-  assert(PAPI_stop_counters(papi_values, e_num) == PAPI_OK); \
-  for (int i = 0; i < e_num; i++) \
-    acc_values[i] += papi_values[i]; \
-  } while (0)
-
-#define REPORT_COUNTERS(STATE) do { \
-  STATE.counters["L1 miss"] = acc_values[0] / STATE.iterations(); \
-  STATE.counters["L2 miss"] = acc_values[1] / STATE.iterations(); \
-  STATE.counters["L3 miss"] = acc_values[2] / STATE.iterations(); \
-  } while (0)
-
-#else
-#define RESET_ACC_COUNTERS (void)0
-#define START_COUNTERS (void)0
-#define ACCUMULATE_COUNTERS (void)0
-#define REPORT_COUNTERS(STATE) (void)0
-#endif
 
 struct identity_hash
 {
