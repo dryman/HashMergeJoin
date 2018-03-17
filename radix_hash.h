@@ -239,11 +239,6 @@ template <typename Key,
     std::get<1>(dst[dst_idx]) = iter->first;
     std::get<2>(dst[dst_idx]) = iter->second;
   }
-  std::cout << "bf3 dst after first pass: ";
-  for (int i = 0; i < 5; i++) {
-    std::cout << std::get<0>(dst[i]) << ", ";
-  }
-  std::cout << "\n";
 
   new_mask_bits = mask_bits - partition_bits;
   if (new_mask_bits <= nosort_bits)
