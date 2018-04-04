@@ -13,6 +13,7 @@
 #include <atomic>
 #include <thread>
 #include "thread_barrier.h"
+#include "radix_hash.h"
 
 template<typename RandomAccessIterator, typename Key>
 static inline
@@ -637,5 +638,65 @@ template <typename Key,
   for (int i = 0; i < num_threads-1; i++) {
     threads[i].join();
   }
+}
+
+template <typename Key,
+  typename Value,
+  typename RandomAccessIterator>
+  void radix_sort_3(RandomAccessIterator dst,
+                    unsigned int input_num,
+                    int partition_bits) {
+  int shift, new_mask_bits;
+  unsigned int iter, idx_i, idx_j, idx_c, partitions;
+  std::size_t h;
+  std::atomic_uint a_counter(0);
+  std::tuple<std::size_t, Key, Value> tmp_bucket;
+
+  partitions = 1 << partition_bits;
+  shift = 64 - partition_bits;
+
+  unsigned int counters[partitions];
+  std::vector<std::pair<unsigned int, unsigned int>> indexes(partitions);
+
+  // Setup counters for counting sort.
+  for (unsigned int i = 0; i < partitions; i++)
+    counters[i] = 0;
+  indexes[0].first = 0;
+  for (unsigned int i = 0; i < input_num; i++) {
+    h = std::get<0>(dst[i]);
+    counters[h >> shift]++;
+  }
+  for (unsigned int i = 0; i < partitions - 1; i++) {
+    indexes[i].second = indexes[i+1].first = indexes[i].first + counters[i];
+  }
+  indexes[partitions-1].second = indexes[partitions-1].first
+  + counters[partitions-1];
+
+  iter = 0;
+  while (iter < partitions) {
+    idx_i = indexes[iter].first;
+    if (idx_i >= indexes[iter].second) {
+      iter++;
+      continue;
+    }
+    tmp_bucket = std::move(dst[idx_i]);
+    do {
+      h = std::get<0>(tmp_bucket);
+      idx_c = h  >> shift;
+      idx_j = indexes[idx_c].first++;
+      std::swap(dst[idx_j], tmp_bucket);
+    } while (idx_j > idx_i);
+  }
+
+  // Reset indexes
+  indexes[0].first = 0;
+  for (unsigned int i = 1; i < partitions; i++) {
+    indexes[i].first = indexes[i-1].second;
+  }
+  new_mask_bits = 64 - partition_bits;
+
+  bf6_helper_p<Key,Value, RandomAccessIterator>(
+      dst, indexes, new_mask_bits,
+      partition_bits, &a_counter);
 }
 #endif
