@@ -324,9 +324,7 @@ static void BM_bf8(benchmark::State& state) {
     }
     state.ResumeTiming();
     START_COUNTERS;
-    ::radix_hash_bf8<std::string,uint64_t>(dst.begin(),
-                                           state.range(0),
-                                           state.range(1), cores);
+    ::radix_hash_bf8(dst.begin(), state.range(0), state.range(1), cores);
     ACCUMULATE_COUNTERS;
   }
   REPORT_COUNTERS(state);

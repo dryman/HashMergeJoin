@@ -233,8 +233,8 @@ class HashMergeJoin2 {
     r_size = std::distance(r_begin, r_end);
     s_size = std::distance(s_begin, s_end);
 
-    ::radix_hash_bf8<Key, RValue>(_r_begin, r_size, 11, num_threads);
-    ::radix_hash_bf8<Key, SValue>(_s_begin, s_size, 11, num_threads);
+    ::radix_hash_bf8(_r_begin, r_size, 11, num_threads);
+    ::radix_hash_bf8(_s_begin, s_size, 11, num_threads);
   }
 
   class iterator : std::iterator<std::input_iterator_tag,

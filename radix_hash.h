@@ -1168,23 +1168,18 @@ template<typename Key,
       std::swap(tmp_bucket, dst[idx_j]);
     }
   }
-
-  /*
-  std::cout << "after sort:\n" << std::dec;
-  for (unsigned int i = begin; i < end; i++) {
-    h = std::get<0>(dst[i]);
-    std::cout << (h >> shift) << ": " << h << "\n";
-  }
-  */
 }
 
-template <typename Key,
-  typename Value,
-  typename RandomAccessIterator>
+template <typename RandomAccessIterator>
   void radix_hash_bf8(RandomAccessIterator dst,
                       unsigned int input_num,
                       int partition_bits,
                       int num_threads) {
+  typedef typename std::tuple_element<1,
+    typename RandomAccessIterator::value_type>::type Key;
+  typedef typename std::tuple_element<2,
+    typename RandomAccessIterator::value_type>::type Value;
+
   int shift, partitions, thread_partition, new_mask_bits;
   std::atomic_uint a_counter(0);
   ThreadBarrier barrier(num_threads);

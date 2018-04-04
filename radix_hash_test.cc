@@ -531,7 +531,7 @@ TEST(radix_hash_bf8_test, multi_pass_large_num3) {
   for (int i = size; i > 0; i--) {
     dst.push_back(std::make_tuple((std::size_t)i, i, i));
   }
-  ::radix_hash_bf8<int,int>(dst.begin(), size, 10, 4);
+  ::radix_hash_bf8(dst.begin(), size, 10, 4);
   for (int i = 0; i < size; i++) {
     EXPECT_EQ(i + 1, std::get<0>(dst[i]));
   }
@@ -551,7 +551,7 @@ TEST(radix_hash_bf8_test, random_num) {
   std_sorted = input;
   std::sort(std_sorted.begin(), std_sorted.end(), tuple_cmp);
 
-  ::radix_hash_bf8<int,int>(input.begin(), size, 11, cores);
+  ::radix_hash_bf8(input.begin(), size, 11, cores);
   for (int i = 0; i < size; i++) {
     EXPECT_EQ(std::get<0>(std_sorted[i]), std::get<0>(input[i]));
   }
