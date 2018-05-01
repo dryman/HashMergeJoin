@@ -62,10 +62,10 @@ class HashMergeJoin {
     _r_sorted = std::vector<std::tuple<std::size_t, Key, RValue>>(r_size);
     _s_sorted = std::vector<std::tuple<std::size_t, Key, RValue>>(s_size);
 
-    radix_hash::radix_hash_bf6<Key, RValue>(r_begin, r_end, _r_sorted.begin(),
+    radix_hash::radix_non_inplace_par<Key, RValue>(r_begin, r_end, _r_sorted.begin(),
                                   11, 0, num_threads);
 
-    radix_hash::radix_hash_bf6<Key, SValue>(s_begin, s_end, _s_sorted.begin(),
+    radix_hash::radix_non_inplace_par<Key, SValue>(s_begin, s_end, _s_sorted.begin(),
                                   11, 0, num_threads);
   }
 
@@ -233,8 +233,8 @@ class HashMergeJoin2 {
     r_size = std::distance(r_begin, r_end);
     s_size = std::distance(s_begin, s_end);
 
-    radix_hash::radix_hash_bf8(_r_begin, r_size, 11, num_threads);
-    radix_hash::radix_hash_bf8(_s_begin, s_size, 11, num_threads);
+    radix_hash::radix_inplace_par(_r_begin, r_size, 11, num_threads);
+    radix_hash::radix_inplace_par(_s_begin, s_size, 11, num_threads);
   }
 
   class iterator : std::iterator<std::input_iterator_tag,

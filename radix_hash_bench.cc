@@ -79,7 +79,7 @@ static void BM_qsort_string(benchmark::State& state) {
     / state.iterations();
 }
 
-static void BM_radix_hash_bf6_str(benchmark::State& state) {
+static void BM_radix_non_inplace_par(benchmark::State& state) {
   int size = state.range(0);
   std::vector<std::tuple<std::size_t, std::string, uint64_t>> dst(size);
   auto src = ::create_strvec(size);
@@ -90,9 +90,9 @@ static void BM_radix_hash_bf6_str(benchmark::State& state) {
   RESET_ACC_COUNTERS;
   for (auto _ : state) {
     START_COUNTERS;
-    ::radix_hash_bf6<std::string,uint64_t>(src.begin(),
-                                           src.end(), dst.begin(),
-                                           state.range(1), 0, cores);
+    radix_hash::radix_non_inplace_par<std::string,uint64_t>(src.begin(),
+                                                            src.end(), dst.begin(),
+                                                            state.range(1), 0, cores);
     ACCUMULATE_COUNTERS;
   }
   REPORT_COUNTERS(state);
@@ -172,7 +172,7 @@ static void RadixArguments(benchmark::internal::Benchmark* b) {
   }
 }
 
-static void BM_bf6_1_thread(benchmark::State& state) {
+static void BM_radix_non_inplace_seq(benchmark::State& state) {
   int size = state.range(0);
   std::vector<std::tuple<std::size_t, std::string, uint64_t>> dst(size);
   auto src = ::create_strvec(size);
@@ -182,9 +182,9 @@ static void BM_bf6_1_thread(benchmark::State& state) {
   RESET_ACC_COUNTERS;
   for (auto _ : state) {
     START_COUNTERS;
-    ::radix_hash_bf6<std::string,uint64_t>(src.begin(),
-                                           src.end(), dst.begin(),
-                                           state.range(1), 0, 1);
+    radix_hash::radix_non_inplace_par<std::string,uint64_t>(src.begin(),
+                                                            src.end(), dst.begin(),
+                                                            state.range(1), 0, 1);
     ACCUMULATE_COUNTERS;
   }
   REPORT_COUNTERS(state);
@@ -196,7 +196,7 @@ static void BM_bf6_1_thread(benchmark::State& state) {
   state.counters["Swap"] = u_after.ru_nswap - u_before.ru_nswap;
 }
 
-static void BM_bf7(benchmark::State& state) {
+static void BM_radix_inplace_seq(benchmark::State& state) {
   int size = state.range(0);
   std::vector<std::tuple<std::size_t, std::string, uint64_t>> dst(size);
   auto src = ::create_strvec(size);
@@ -213,7 +213,7 @@ static void BM_bf7(benchmark::State& state) {
     }
     state.ResumeTiming();
     START_COUNTERS;
-    ::radix_hash_bf7<std::string,uint64_t>(dst.begin(),
+    radix_hash::radix_inplace_seq<std::string,uint64_t>(dst.begin(),
                                            state.range(0), state.range(1));
     ACCUMULATE_COUNTERS;
   }
@@ -227,7 +227,7 @@ static void BM_bf7(benchmark::State& state) {
   state.counters["Swap"] = u_after.ru_nswap - u_before.ru_nswap;
 }
 
-static void BM_bf8(benchmark::State& state) {
+static void BM_radix_inplace_par(benchmark::State& state) {
   int size = state.range(0);
   std::vector<std::tuple<std::size_t, std::string, uint64_t>> dst(size);
   unsigned int cores = std::thread::hardware_concurrency();
@@ -245,7 +245,7 @@ static void BM_bf8(benchmark::State& state) {
     }
     state.ResumeTiming();
     START_COUNTERS;
-    ::radix_hash_bf8(dst.begin(), state.range(0), state.range(1), cores);
+    radix_hash::radix_inplace_par(dst.begin(), state.range(0), state.range(1), cores);
     ACCUMULATE_COUNTERS;
   }
   REPORT_COUNTERS(state);
@@ -265,16 +265,16 @@ BENCHMARK(BM_tbb_sort_string)->Apply(RadixArguments)
 ->Complexity(benchmark::oN)->UseRealTime();
 BENCHMARK(BM_pdqsort_string)->Apply(RadixArguments)
 ->Complexity(benchmark::oN)->UseRealTime();
-BENCHMARK(BM_radix_hash_bf6_str)->Apply(RadixArguments)
+BENCHMARK(BM_radix_non_inplace_par)->Apply(RadixArguments)
 ->Complexity(benchmark::oN)->UseRealTime();
 
-BENCHMARK(BM_bf6_1_thread)->Apply(RadixArguments)
+BENCHMARK(BM_radix_non_inplace_seq)->Apply(RadixArguments)
 ->Complexity(benchmark::oN)->UseRealTime();
 
-BENCHMARK(BM_bf7)->Apply(RadixArguments)
+BENCHMARK(BM_radix_inplace_seq)->Apply(RadixArguments)
 ->Complexity(benchmark::oN)->UseRealTime();
 
-BENCHMARK(BM_bf8)->Apply(RadixArguments)
+BENCHMARK(BM_radix_inplace_par)->Apply(RadixArguments)
 ->Complexity(benchmark::oN)->UseRealTime();
 
 BENCHMARK_MAIN();

@@ -334,12 +334,12 @@ template <typename Key,
   typename Hash = std::hash<Key>,
   typename BidirectionalIterator,
   typename RandomAccessIterator>
-  void radix_hash_bf6(BidirectionalIterator begin,
-                      BidirectionalIterator end,
-                      RandomAccessIterator dst,
-                      int partition_bits,
-                      int nosort_bits,
-                      int num_threads) {
+  void radix_non_inplace_par(BidirectionalIterator begin,
+                             BidirectionalIterator end,
+                             RandomAccessIterator dst,
+                             int partition_bits,
+                             int nosort_bits,
+                             int num_threads) {
   int input_num, shift, partitions, thread_partition, new_mask_bits;
   std::atomic_uint a_counter(0);
   ThreadBarrier barrier(num_threads);
@@ -390,9 +390,9 @@ template <typename Key,
 template <typename Key,
   typename Value,
   typename RandomAccessIterator>
-  void radix_hash_bf7(RandomAccessIterator dst,
-                      unsigned int input_num,
-                      int partition_bits) {
+  void radix_inplace_seq(RandomAccessIterator dst,
+                         unsigned int input_num,
+                         int partition_bits) {
   int shift, new_mask_bits;
   unsigned int iter, idx_i, idx_j, idx_c, partitions;
   std::size_t h;
@@ -576,10 +576,10 @@ template<typename Key,
 }
 
 template <typename RandomAccessIterator>
-  void radix_hash_bf8(RandomAccessIterator dst,
-                      unsigned int input_num,
-                      int partition_bits,
-                      int num_threads) {
+void radix_inplace_par(RandomAccessIterator dst,
+                       unsigned int input_num,
+                       int partition_bits,
+                       int num_threads) {
   typedef typename std::tuple_element<1,
     typename RandomAccessIterator::value_type>::type Key;
   typedef typename std::tuple_element<2,
