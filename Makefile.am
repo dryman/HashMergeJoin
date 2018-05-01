@@ -40,7 +40,13 @@ googletest/googletest/lib/libgtest_main.la \
 @PTHREAD_LIBS@
 thread_barrier_test_LDFLAGS = -static
 
-bin_PROGRAMS = radix_hash_bench hashjoin_bench radix_sort_bench
+bin_PROGRAMS = find_k_bench radix_hash_bench hashjoin_bench radix_sort_bench
+
+find_k_bench_SOURCES = find_k_bench.cc strgen.cc radix_hash.h radix_sort.h \
+                           thread_barrier.h thread_barrier.cc
+find_k_bench_CXXFLAGS = -std=c++11 -Wall @PAPI_CFLAGS@
+find_k_bench_LDADD = @PAPI_LIBS@
+find_k_bench_LDFLAGS = -lbenchmark
 
 radix_hash_bench_SOURCES = radix_hash_bench.cc strgen.cc radix_hash.h \
                            thread_barrier.h thread_barrier.cc
