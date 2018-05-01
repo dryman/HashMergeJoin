@@ -115,24 +115,18 @@ static void BM_radix_non_inplace_seq(benchmark::State& state) {
 }
 
 BENCHMARK(BM_radix_sort_int_seq)
-    ->Arg(1)->Arg(2)->Arg(3)->Arg(4)
-    ->Arg(5)->Arg(6)->Arg(7)->Arg(8)
-    ->Arg(9)->Arg(10)->Arg(11)->Arg(12)
-    ->Arg(13)->Arg(14)->Arg(15)->Arg(16)
-    ->Arg(17)->Arg(18)->Arg(19)->Arg(20);
+    ->Arg(1)->Arg(2)->Arg(3)->Arg(4)->Arg(5)
+    ->Arg(6)->Arg(7)->Arg(8)->Arg(9)->Arg(10)
+    ->Arg(11)->Arg(12) ->Arg(13)->Arg(14)->Arg(15);
 
 BENCHMARK(BM_radix_inplace_seq)
-    ->Arg(1)->Arg(2)->Arg(3)->Arg(4)
-    ->Arg(5)->Arg(6)->Arg(7)->Arg(8)
-    ->Arg(9)->Arg(10)->Arg(11)->Arg(12)
-    ->Arg(13)->Arg(14)->Arg(15)->Arg(16)
-    ->Arg(17)->Arg(18)->Arg(19)->Arg(20);
+    ->Arg(1)->Arg(2)->Arg(3)->Arg(4)->Arg(5)
+    ->Arg(6)->Arg(7)->Arg(8)->Arg(9)->Arg(10)
+    ->Arg(11)->Arg(12) ->Arg(13)->Arg(14)->Arg(15);
 
 BENCHMARK(BM_radix_non_inplace_seq)
-    ->Arg(1)->Arg(2)->Arg(3)->Arg(4)
-    ->Arg(5)->Arg(6)->Arg(7)->Arg(8)
-    ->Arg(9)->Arg(10)->Arg(11)->Arg(12)
-    ->Arg(13)->Arg(14)->Arg(15)->Arg(16)
-    ->Arg(17)->Arg(18)->Arg(19)->Arg(20);
+    ->Arg(1)->Arg(2)->Arg(3)->Arg(4)->Arg(5)
+    ->Arg(6)->Arg(7)->Arg(8)->Arg(9)->Arg(10)
+    ->Arg(11)->Arg(12) ->Arg(13)->Arg(14)->Arg(15);
 
 BENCHMARK_MAIN();
