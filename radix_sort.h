@@ -711,7 +711,7 @@ template <typename Key,
   }
   new_mask_bits = 64 - partition_bits;
 
-  bf6_helper_p<Key,Value, RandomAccessIterator>(
+  radix_hash::bf6_helper_p<Key,Value, RandomAccessIterator>(
       dst, indexes, new_mask_bits,
       partition_bits, &a_counter);
 }

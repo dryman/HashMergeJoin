@@ -20,6 +20,8 @@
 #include <string>
 #include <random>
 
+using namespace radix_hash;
+
 struct identity_hash
 {
   std::size_t operator()(const int& k) const {

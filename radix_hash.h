@@ -30,16 +30,7 @@
 #include "thread_barrier.h"
 
 // namespace radix_hash?
-
-static inline
-int compute_power(int input_num) {
-  return 64 - __builtin_clzll(input_num);
-}
-
-static inline
-std::size_t compute_mask(int input_num) {
-  return (1ULL << ::compute_power(input_num)) - 1;
-}
+namespace radix_hash {
 
 template<typename Key,
   typename Value>
@@ -637,5 +628,7 @@ template <typename RandomAccessIterator>
   for (int i = 0; i < num_threads-1; i++) {
     threads[i].join();
   }
+}
+
 }
 #endif

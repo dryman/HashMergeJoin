@@ -28,6 +28,7 @@
 #include "pdqsort/pdqsort.h"
 #include "papi_setup.h"
 
+using namespace radix_hash;
 
 struct identity_hash
 {
