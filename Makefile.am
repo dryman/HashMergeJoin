@@ -40,42 +40,30 @@ googletest/googletest/lib/libgtest_main.la \
 @PTHREAD_LIBS@
 thread_barrier_test_LDFLAGS = -static
 
-bin_PROGRAMS = find_k_bench radix_hash_bench hashjoin_bench radix_sort_bench
+bin_PROGRAMS = find_k_bench radix_hash_bench hashjoin_bench radix_sort_bench \
+radix_bench_seq
 
-find_k_bench_SOURCES = find_k_bench.cc strgen.cc radix_hash.h radix_sort.h \
-                           thread_barrier.h thread_barrier.cc
+find_k_bench_SOURCES = find_k_bench.cc strgen.cc radix_hash.h radix_sort.h thread_barrier.h thread_barrier.cc
 find_k_bench_CXXFLAGS = -std=c++11 -Wall @PTHREAD_CFLAGS@ @PAPI_CFLAGS@
 find_k_bench_LDADD = @PTHREAD_LIBS@ @PAPI_LIBS@
 find_k_bench_LDFLAGS = -lbenchmark
 
-radix_hash_bench_SOURCES = radix_hash_bench.cc strgen.cc radix_hash.h \
-                           thread_barrier.h thread_barrier.cc
+radix_hash_bench_SOURCES = radix_hash_bench.cc strgen.cc radix_hash.h thread_barrier.h thread_barrier.cc
 radix_hash_bench_CXXFLAGS = -std=c++11 -Wall @PTHREAD_CFLAGS@ @PAPI_CFLAGS@
 radix_hash_bench_LDADD = @PTHREAD_LIBS@ @PAPI_LIBS@
 radix_hash_bench_LDFLAGS = -lbenchmark -ltbb -ltbbmalloc
 
-radix_sort_bench_SOURCES = radix_sort_bench.cc radix_sort.h \
-                           thread_barrier.h thread_barrier.cc
+radix_sort_bench_SOURCES = radix_sort_bench.cc radix_sort.h thread_barrier.h thread_barrier.cc
 radix_sort_bench_CXXFLAGS = -std=c++11 -Wall @PTHREAD_CFLAGS@ @PAPI_CFLAGS@
 radix_sort_bench_LDADD = @PTHREAD_LIBS@ @PAPI_LIBS@
 radix_sort_bench_LDFLAGS = -lbenchmark -ltbb -ltbbmalloc
 
-hashjoin_bench_SOURCES = hashjoin_bench.cc strgen.cc \
-                         thread_barrier.h thread_barrier.cc
+hashjoin_bench_SOURCES = hashjoin_bench.cc strgen.cc thread_barrier.h thread_barrier.cc
 hashjoin_bench_CXXFLAGS = -std=c++11 @PTHREAD_CFLAGS@ @PAPI_CFLAGS@
 hashjoin_bench_LDADD = @PTHREAD_LIBS@ @PAPI_LIBS@
 hashjoin_bench_LDFLAGS = -lbenchmark
 
-# analyze_hashjoin_srcs = $(hashjoin_bench_SOURCES)
-# analyze_hashjoin_plists = $(analyze_hashjoin_srcs:%.cc=%.plist)
-# MOSTLYCLEANFILES = $(analyze_hashjoin_plists)
-# 
-# $(analyze_hashjoin_plists):	%.plist: %.cc
-# 	@echo "  CCSA  " $@
-# 	$(CXX) --analyze -std=c++14 $< -o $@
-# 
-# all-local:	$(analyze_hashjoin_plists)
-# 
-# analyze:	$(analyze_hashjoin_plists)
-# 
-# .PHONY:	analyze
+radix_bench_seq_SOURCES = radix_bench_seq.cc strgen.cc radix_hash.h radix_sort.h thread_barrier.h thread_barrier.cc
+radix_bench_seq_CXXFLAGS = -std=c++11 -Wall @PTHREAD_CFLAGS@ @PAPI_CFLAGS@
+radix_bench_seq_LDADD = @PTHREAD_LIBS@ @PAPI_LIBS@
+radix_bench_seq_LDFLAGS = -lbenchmark
