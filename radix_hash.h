@@ -27,10 +27,30 @@
 #include <assert.h>
 #include <atomic>
 #include <thread>
+#include <cmath>
 #include "thread_barrier.h"
 
 // namespace radix_hash?
 namespace radix_hash {
+
+// returns partition bits
+static inline int
+optimal_partition(unsigned int input_num) {
+  double min_dist = 1.0;
+  int candidate = 0;
+  for (int k = 6; k < 15; k++) {
+    double log_k_input = log(input_num)/log(1<<k);
+    double top = ceil(log_k_input);
+    double bottom = floor(log_k_input);
+    double dist = log_k_input - bottom < top - log_k_input ?
+     log_k_input - bottom : top - log_k_input;
+    if (dist < min_dist) {
+      candidate = k;
+      min_dist = dist;
+    }
+  }
+  return candidate;
+}
 
 template<typename Key,
   typename Value>

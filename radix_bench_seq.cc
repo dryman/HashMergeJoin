@@ -123,6 +123,8 @@ static void BM_radix_inplace_seq_int(benchmark::State& state) {
     input.push_back(std::make_pair(r, i));
   }
 
+  int partition_bits = radix_hash::optimal_partition(size);
+
   struct rusage u_before, u_after;
   getrusage(RUSAGE_SELF, &u_before);
 
@@ -133,7 +135,7 @@ static void BM_radix_inplace_seq_int(benchmark::State& state) {
     state.ResumeTiming();
     START_COUNTERS;
     ::radix_sort_1<std::size_t, uint64_t>(work.begin(), size,
-                                          state.range(1), 1);
+                                          partition_bits, 1);
     ACCUMULATE_COUNTERS;
   }
   REPORT_COUNTERS(state);
@@ -214,6 +216,7 @@ static void BM_radix_inplace_seq_str(benchmark::State& state) {
   int size = state.range(0);
   std::vector<std::tuple<std::size_t, std::string, uint64_t>> dst(size);
   auto src = ::create_strvec(size);
+  int partition_bits = radix_hash::optimal_partition(size);
   struct rusage u_before, u_after;
   getrusage(RUSAGE_SELF, &u_before);
 
@@ -228,7 +231,7 @@ static void BM_radix_inplace_seq_str(benchmark::State& state) {
     state.ResumeTiming();
     START_COUNTERS;
     radix_hash::radix_inplace_seq<std::string,uint64_t>(dst.begin(),
-                                           state.range(0), state.range(1));
+                                           state.range(0), partition_bits);
     ACCUMULATE_COUNTERS;
   }
   REPORT_COUNTERS(state);
@@ -244,6 +247,7 @@ static void BM_radix_inplace_seq_str(benchmark::State& state) {
 static void BM_radix_non_inplace_seq_str(benchmark::State& state) {
   int size = state.range(0);
   std::vector<std::tuple<std::size_t, std::string, uint64_t>> dst(size);
+  int partition_bits = radix_hash::optimal_partition(size);
   auto src = ::create_strvec(size);
   struct rusage u_before, u_after;
   getrusage(RUSAGE_SELF, &u_before);
@@ -253,7 +257,7 @@ static void BM_radix_non_inplace_seq_str(benchmark::State& state) {
     START_COUNTERS;
     radix_hash::radix_non_inplace_par<std::string,uint64_t>(src.begin(),
                                                             src.end(), dst.begin(),
-                                                            state.range(1), 0, 1);
+                                                            partition_bits, 0, 1);
     ACCUMULATE_COUNTERS;
   }
   REPORT_COUNTERS(state);
@@ -267,11 +271,12 @@ static void BM_radix_non_inplace_seq_str(benchmark::State& state) {
 
 static void RadixArguments(benchmark::internal::Benchmark* b) {
   uint64_t i = 10*1000;
-  uint64_t max = 1000*1000*1000;
+  //uint64_t max = 1000*1000*1000;
+  uint64_t max = 1000*1000;
   for (;i <= max; i*=10) {
-    b->Args({(int)i, 11});
+    b->Args({(int)i});
     if (i <= max)
-      b->Args({(int)i*5, 11});
+      b->Args({(int)i*5});
     else
       return;
   }
