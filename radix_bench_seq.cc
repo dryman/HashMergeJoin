@@ -271,8 +271,7 @@ static void BM_radix_non_inplace_seq_str(benchmark::State& state) {
 
 static void RadixArguments(benchmark::internal::Benchmark* b) {
   uint64_t i = 10*1000;
-  //uint64_t max = 1000*1000*1000;
-  uint64_t max = 1000*1000;
+  uint64_t max = 1000*1000*1000;
   for (;i <= max; i*=10) {
     b->Args({(int)i});
     if (i <= max)
