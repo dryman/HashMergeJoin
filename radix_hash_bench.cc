@@ -91,8 +91,7 @@ static void BM_radix_non_inplace_par(benchmark::State& state) {
   for (auto _ : state) {
     START_COUNTERS;
     radix_hash::radix_non_inplace_par<std::string,uint64_t>(src.begin(),
-                                                            src.end(), dst.begin(),
-                                                            state.range(1), 0, cores);
+                                                            src.end(), dst.begin(), cores);
     ACCUMULATE_COUNTERS;
   }
   REPORT_COUNTERS(state);
@@ -183,8 +182,7 @@ static void BM_radix_non_inplace_seq(benchmark::State& state) {
   for (auto _ : state) {
     START_COUNTERS;
     radix_hash::radix_non_inplace_par<std::string,uint64_t>(src.begin(),
-                                                            src.end(), dst.begin(),
-                                                            state.range(1), 0, 1);
+                                                            src.end(), dst.begin(), 1);
     ACCUMULATE_COUNTERS;
   }
   REPORT_COUNTERS(state);
@@ -213,8 +211,7 @@ static void BM_radix_inplace_seq(benchmark::State& state) {
     }
     state.ResumeTiming();
     START_COUNTERS;
-    radix_hash::radix_inplace_seq<std::string,uint64_t>(dst.begin(),
-                                           state.range(0), state.range(1));
+    radix_hash::radix_inplace_seq<std::string,uint64_t>(dst.begin(), state.range(0));
     ACCUMULATE_COUNTERS;
   }
   REPORT_COUNTERS(state);
@@ -245,7 +242,7 @@ static void BM_radix_inplace_par(benchmark::State& state) {
     }
     state.ResumeTiming();
     START_COUNTERS;
-    radix_hash::radix_inplace_par(dst.begin(), state.range(0), state.range(1), cores);
+    radix_hash::radix_inplace_par(dst.begin(), state.range(0), cores);
     ACCUMULATE_COUNTERS;
   }
   REPORT_COUNTERS(state);

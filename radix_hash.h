@@ -44,11 +44,20 @@ optimal_partition(unsigned int input_num) {
     double bottom = floor(log_k_input);
     double dist = log_k_input - bottom < top - log_k_input ?
      log_k_input - bottom : top - log_k_input;
+    std::cout << "k-bit: " << k 
+              << " dist: " << dist << "\n";
+    if (input_num < (1<<k)) {
+      std::cout << "k-star: " << k
+                << " dist: " << dist << "\n";
+      return k;
+    }
     if (dist < min_dist) {
       candidate = k;
       min_dist = dist;
     }
   }
+  std::cout << "k-star: " << candidate
+            << " dist: " << min_dist << "\n";
   return candidate;
 }
 
@@ -357,9 +366,8 @@ template <typename Key,
   void radix_non_inplace_par(BidirectionalIterator begin,
                              BidirectionalIterator end,
                              RandomAccessIterator dst,
-                             int partition_bits,
-                             int nosort_bits,
-                             int num_threads) {
+                             int num_threads,
+                             int partition_bits) {
   int input_num, shift, partitions, thread_partition, new_mask_bits;
   std::atomic_uint a_counter(0);
   ThreadBarrier barrier(num_threads);
@@ -405,6 +413,22 @@ template <typename Key,
   for (int i = 0; i < num_threads-1; i++) {
     threads[i].join();
   }
+}
+
+template <typename Key,
+  typename Value,
+  typename Hash = std::hash<Key>,
+  typename BidirectionalIterator,
+  typename RandomAccessIterator>
+  void radix_non_inplace_par(BidirectionalIterator begin,
+                             BidirectionalIterator end,
+                             RandomAccessIterator dst,
+                             int num_threads) {
+  int input_num, partition_bits;
+  input_num = std::distance(begin, end);
+  partition_bits = optimal_partition(input_num);
+  radix_non_inplace_par<Key,Value,Hash,BidirectionalIterator,RandomAccessIterator>
+   (begin, end, dst, num_threads, partition_bits);
 }
 
 template <typename Key,
@@ -465,6 +489,16 @@ template <typename Key,
   bf6_helper_p<Key,Value, RandomAccessIterator>(
       dst, indexes, new_mask_bits,
       partition_bits, &a_counter);
+}
+
+template <typename Key,
+  typename Value,
+  typename RandomAccessIterator>
+  void radix_inplace_seq(RandomAccessIterator dst,
+                         unsigned int input_num) {
+  int partition_bits;
+  partition_bits = optimal_partition(input_num);
+  radix_inplace_seq<Key,Value,RandomAccessIterator>(dst, input_num, partition_bits);
 }
 
 template<typename Key,
@@ -598,8 +632,8 @@ template<typename Key,
 template <typename RandomAccessIterator>
 void radix_inplace_par(RandomAccessIterator dst,
                        unsigned int input_num,
-                       int partition_bits,
-                       int num_threads) {
+                       int num_threads,
+                       int partition_bits) {
   typedef typename std::tuple_element<1,
     typename RandomAccessIterator::value_type>::type Key;
   typedef typename std::tuple_element<2,
@@ -650,5 +684,13 @@ void radix_inplace_par(RandomAccessIterator dst,
   }
 }
 
+template <typename RandomAccessIterator>
+void radix_inplace_par(RandomAccessIterator dst,
+                       unsigned int input_num,
+                       int num_threads) {
+  int partition_bits;
+  partition_bits = optimal_partition(input_num);
+  radix_inplace_par<RandomAccessIterator>(dst, input_num, num_threads, partition_bits);
+}
 }
 #endif

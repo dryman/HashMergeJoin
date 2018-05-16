@@ -103,7 +103,7 @@ static void BM_radix_non_inplace_seq(benchmark::State& state) {
     START_COUNTERS;
     radix_hash::radix_non_inplace_par<std::string,uint64_t>(src.begin(),
                                                             src.end(), dst.begin(),
-                                                            state.range(0), 0, 1);
+                                                            1, state.range(0));
     ACCUMULATE_COUNTERS;
   }
   REPORT_COUNTERS(state);

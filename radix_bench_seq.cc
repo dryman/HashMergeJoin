@@ -257,7 +257,7 @@ static void BM_radix_non_inplace_seq_str(benchmark::State& state) {
     START_COUNTERS;
     radix_hash::radix_non_inplace_par<std::string,uint64_t>(src.begin(),
                                                             src.end(), dst.begin(),
-                                                            partition_bits, 0, 1);
+                                                            partition_bits, 1);
     ACCUMULATE_COUNTERS;
   }
   REPORT_COUNTERS(state);

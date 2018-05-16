@@ -43,8 +43,7 @@ TEST(radix_non_inplace_par, full_sort) {
   for (int i = 4; i > -1; i--) {
     src.push_back(std::make_pair(i, i));
   }
-  radix_hash::radix_non_inplace_par<int,int,identity_hash>(src.begin(), src.end(), dst.begin(),
-                                                           3, 0, 2);
+  radix_hash::radix_non_inplace_par<int,int,identity_hash>(src.begin(), src.end(), dst.begin(), 1, 3);
   EXPECT_EQ(0, std::get<0>(dst[0]));
   EXPECT_EQ(1, std::get<0>(dst[1]));
   EXPECT_EQ(2, std::get<0>(dst[2]));
@@ -58,8 +57,7 @@ TEST(radix_non_inplace_par, multi_pass_sort) {
   for (int i = 5; i > 0; i--) {
     src.push_back(std::make_pair(i, i));
   }
-  radix_hash::radix_non_inplace_par<int,int,identity_hash>(src.begin(), src.end(), dst.begin(),
-                                                           1, 0, 2);
+  radix_hash::radix_non_inplace_par<int,int,identity_hash>(src.begin(), src.end(), dst.begin(), 1, 1);
   EXPECT_EQ(1, std::get<0>(dst[0]));
   EXPECT_EQ(2, std::get<0>(dst[1]));
   EXPECT_EQ(3, std::get<0>(dst[2]));
@@ -73,8 +71,7 @@ TEST(radix_non_inplace_par, multi_pass_sort2) {
   for (int i = 5; i > 0; i--) {
     src.push_back(std::make_pair(i, i));
   }
-  radix_hash::radix_non_inplace_par<int,int,identity_hash>(src.begin(), src.end(), dst.begin(),
-                                                           2, 0, 2);
+  radix_hash::radix_non_inplace_par<int,int,identity_hash>(src.begin(), src.end(), dst.begin(), 1, 2);
   EXPECT_EQ(1, std::get<0>(dst[0]));
   EXPECT_EQ(2, std::get<0>(dst[1]));
   EXPECT_EQ(3, std::get<0>(dst[2]));
@@ -89,8 +86,7 @@ TEST(radix_non_inplace_par, multi_pass_large_num) {
   for (int i = 12345; i > 0; i--) {
     src.push_back(std::make_pair(i, i));
   }
-  radix_hash::radix_non_inplace_par<int,int,identity_hash>(src.begin(), src.end(), dst.begin(),
-                                                           1, 0, cores);
+  radix_hash::radix_non_inplace_par<int,int,identity_hash>(src.begin(), src.end(), dst.begin(), cores, 1);
   for (int i = 0; i < 12345; i++) {
     EXPECT_EQ(i + 1, std::get<0>(dst[i]));
   }
@@ -103,8 +99,7 @@ TEST(radix_non_inplace_par, multi_pass_large_num2) {
   for (int i = 12345; i > 0; i--) {
     src.push_back(std::make_pair(i, i));
   }
-  radix_hash::radix_non_inplace_par<int,int,identity_hash>(src.begin(), src.end(), dst.begin(),
-                                                           5, 0, cores);
+  radix_hash::radix_non_inplace_par<int,int,identity_hash>(src.begin(), src.end(), dst.begin(), cores);
   for (int i = 0; i < 12345; i++) {
     EXPECT_EQ(i + 1, std::get<0>(dst[i]));
   }
@@ -118,8 +113,7 @@ TEST(radix_non_inplace_par, multi_pass_large_num3) {
   for (int i = size; i > 0; i--) {
     src[size-i] = std::make_pair(i, i);
   }
-  radix_hash::radix_non_inplace_par<int,int,identity_hash>(src.begin(), src.end(), dst.begin(),
-                                                           10, 0, cores);
+  radix_hash::radix_non_inplace_par<int,int,identity_hash>(src.begin(), src.end(), dst.begin(), cores);
   for (int i = 0; i < size; i++) {
     EXPECT_EQ(i + 1, std::get<0>(dst[i]));
   }
@@ -180,7 +174,7 @@ TEST(radix_inplace_seq_test, multi_pass_large_num2) {
   for (int i = 12345; i > 0; i--) {
     dst.push_back(std::make_tuple((std::size_t)i, i, i));
   }
-  radix_hash::radix_inplace_seq<int,int>(dst.begin(), 12345, 5);
+  radix_hash::radix_inplace_seq<int,int>(dst.begin(), 12345);
   for (int i = 0; i < 12345; i++) {
     EXPECT_EQ(i + 1, std::get<0>(dst[i]));
   }
@@ -192,7 +186,7 @@ TEST(radix_inplace_seq_test, multi_pass_large_num3) {
   for (int i = size; i > 0; i--) {
     dst.push_back(std::make_tuple((std::size_t)i, i, i));
   }
-  radix_hash::radix_inplace_seq<int,int>(dst.begin(), size, 10);
+  radix_hash::radix_inplace_seq<int,int>(dst.begin(), size);
   for (int i = 0; i < size; i++) {
     EXPECT_EQ(i + 1, std::get<0>(dst[i]));
   }
@@ -211,7 +205,7 @@ TEST(radix_inplace_seq_test, random_num) {
   std_sorted = input;
   std::sort(std_sorted.begin(), std_sorted.end(), tuple_cmp);
 
-  radix_hash::radix_inplace_seq<int,int>(input.begin(), size, 10);
+  radix_hash::radix_inplace_seq<int,int>(input.begin(), size);
   for (int i = 0; i < size; i++) {
     EXPECT_EQ(std::get<0>(std_sorted[i]), std::get<0>(input[i]));
   }
@@ -224,7 +218,7 @@ TEST(radix_inplace_par_test, multi_pass_large_num3) {
   for (int i = size; i > 0; i--) {
     dst.push_back(std::make_tuple((std::size_t)i, i, i));
   }
-  radix_hash::radix_inplace_par(dst.begin(), size, 10, 4);
+  radix_hash::radix_inplace_par(dst.begin(), size, 4);
   for (int i = 0; i < size; i++) {
     EXPECT_EQ(i + 1, std::get<0>(dst[i]));
   }
@@ -244,7 +238,7 @@ TEST(radix_inplace_par_test, random_num) {
   std_sorted = input;
   std::sort(std_sorted.begin(), std_sorted.end(), tuple_cmp);
 
-  radix_hash::radix_inplace_par(input.begin(), size, 11, cores);
+  radix_hash::radix_inplace_par(input.begin(), size, cores);
   for (int i = 0; i < size; i++) {
     EXPECT_EQ(std::get<0>(std_sorted[i]), std::get<0>(input[i]));
   }
