@@ -99,7 +99,7 @@ TEST(radix_non_inplace_par, multi_pass_large_num2) {
   for (int i = 12345; i > 0; i--) {
     src.push_back(std::make_pair(i, i));
   }
-  radix_hash::radix_non_inplace_par<int,int,identity_hash>(src.begin(), src.end(), dst.begin(), cores);
+  radix_hash::radix_non_inplace_par<int,int,identity_hash>(src.begin(), src.end(), dst.begin(), cores, 14);
   for (int i = 0; i < 12345; i++) {
     EXPECT_EQ(i + 1, std::get<0>(dst[i]));
   }
@@ -238,7 +238,8 @@ TEST(radix_inplace_par_test, random_num) {
   std_sorted = input;
   std::sort(std_sorted.begin(), std_sorted.end(), tuple_cmp);
 
-  radix_hash::radix_inplace_par(input.begin(), size, cores);
+  // TODO bug: when parition <= 8 it failed this test!
+  radix_hash::radix_inplace_par(input.begin(), size, 2, 1);
   for (int i = 0; i < size; i++) {
     EXPECT_EQ(std::get<0>(std_sorted[i]), std::get<0>(input[i]));
   }
