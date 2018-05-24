@@ -224,6 +224,23 @@ TEST(radix_inplace_par_test, multi_pass_large_num3) {
   }
 }
 
+TEST(radix_inplace_par_test, simple_input) {
+  int size = 1024;
+  std::vector<std::tuple<std::size_t, int, int>> dst;
+
+  for (int i = 0; i < size/2; i++) {
+    std::size_t key = (1ULL << 63) + i;
+    dst.push_back(std::make_tuple(key, i, i));
+    dst.push_back(std::make_tuple(i, i, i));
+  }
+  radix_hash::radix_inplace_par(dst.begin(), size, 8, 1);
+
+  for (int i = 0; i < size/2; i++) {
+    EXPECT_EQ(i, std::get<0>(dst[i]));
+    EXPECT_EQ((1ULL<<63)+i, std::get<0>(dst[i+size/2]));
+  }
+}
+
 TEST(radix_inplace_par_test, random_num) {
   int size = 1<<16;
   std::vector<std::tuple<std::size_t, int, int>> input;
@@ -238,8 +255,7 @@ TEST(radix_inplace_par_test, random_num) {
   std_sorted = input;
   std::sort(std_sorted.begin(), std_sorted.end(), tuple_cmp);
 
-  // TODO bug: when parition <= 8 it failed this test!
-  radix_hash::radix_inplace_par(input.begin(), size, 2, 1);
+  radix_hash::radix_inplace_par(input.begin(), size, cores, 1);
   for (int i = 0; i < size; i++) {
     EXPECT_EQ(std::get<0>(std_sorted[i]), std::get<0>(input[i]));
   }

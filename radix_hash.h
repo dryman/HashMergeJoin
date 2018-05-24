@@ -513,14 +513,14 @@ template<typename Key,
                              unsigned int end,
                              unsigned int thread_id,
                              ThreadBarrier* barrier,
+                             std::vector<std::atomic_flag>* locks,
                              std::vector<std::atomic_ullong>* shared_counters,
-                             std::vector<std::pair<unsigned int,
-                             unsigned int>>* indexes,
+                             std::vector<std::pair<unsigned int, unsigned int>>* sort_indexes,
+                             std::vector<std::pair<unsigned int, unsigned int>>* indexes,
                              unsigned int partitions,
                              int shift) {
   std::size_t h;
   int local_counters[partitions];
-  unsigned long long old_val, new_val, unsort, sort, flag, counter_mask;
   unsigned int iter, idx_i, idx_j, idx_c;
   std::tuple<std::size_t, Key, Value> tmp_bucket;
 
@@ -538,97 +538,59 @@ template<typename Key,
 
   // in barrier
   if (barrier->wait()) {
-    local_counters[0] = 0;
     (*indexes)[0].first = 0;
+    (*sort_indexes)[0].first = (*sort_indexes)[0].second = 0;
     for (unsigned int i = 0; i < partitions - 1; i++) {
-      local_counters[i+1] =
-        (*indexes)[i].second =
-        (*indexes)[i+1].first = (*indexes)[i].first +
-        (*shared_counters)[i].load(std::memory_order_relaxed);
+      (*indexes)[i].second =
+       (*sort_indexes)[i+1].first =
+       (*sort_indexes)[i+1].second = 
+       (*indexes)[i+1].first = (*indexes)[i].first +
+       (*shared_counters)[i].load(std::memory_order_relaxed);
     }
     (*indexes)[partitions-1].second = (*indexes)[partitions-1].first
       + (*shared_counters)[partitions-1].load(std::memory_order_relaxed);
-    for (unsigned int i = 0; i < partitions; i++) {
-      new_val = (((uint64_t)local_counters[i]) << 32) |
-        (uint64_t)local_counters[i];
-      (*shared_counters)[i].store(new_val, std::memory_order_relaxed);
-    }
     barrier->wait();
   } else {
     barrier->wait();
   }
 
-  counter_mask = (1ULL << 31) - 1;
   iter = thread_id % partitions;
   while (iter < partitions) {
-    old_val = (*shared_counters)[iter].load(std::memory_order_acquire);
-  outer_reload:
-    unsort = old_val & counter_mask;
-    flag = (old_val >> 31) & 1;
-    sort = old_val >> 32;
-    if (flag)
-      continue;
-    if (unsort >= (*indexes)[iter].second ||
-        sort >= (*indexes)[iter].second) {
+    while ((*locks)[iter].test_and_set(std::memory_order_acquire))
+      ; // acquire the lock
+    if ((*sort_indexes)[iter].first >= (*indexes)[iter].second ||
+        (*sort_indexes)[iter].second >= (*indexes)[iter].second) {
+      (*locks)[iter].clear(std::memory_order_release);
       iter++;
       continue;
     }
-    idx_i = unsort++;
-    flag = 1;
-    new_val = (sort << 32) | (flag << 31) | unsort;
-    if (!(*shared_counters)[iter].compare_exchange_strong
-        (old_val, new_val,
-         std::memory_order_acq_rel,
-         std::memory_order_acq_rel)) {
-      goto outer_reload;
-    }
-    old_val = new_val;
-    h = std::get<0>(dst[idx_i]);
-    idx_c = h >> shift;
-    if (idx_c == iter) {
-      sort++;
-      flag = 0;
-      new_val = (sort << 32) | unsort;
-      (*shared_counters)[iter].store(new_val, std::memory_order_release);
-      continue;
-    }
+    idx_i = (*sort_indexes)[iter].first++;
+    //h = std::get<0>(dst[idx_i]);
+    //idx_c = h >> shift;
+    //if (idx_c == iter) {
+    //  (*sort_indexes)[iter].second++;
+    //  (*locks)[iter].clear(std::memory_order_release);
+    //  continue;
+    //}
     tmp_bucket = std::move(dst[idx_i]);
-    (*shared_counters)[iter].fetch_and(~(1ULL<<31), std::memory_order_release);
-
+    (*locks)[iter].clear(std::memory_order_release);
     while (true) {
       h = std::get<0>(tmp_bucket);
       idx_c = h >> shift;
-    inner_reload_1:
-      old_val = (*shared_counters)[idx_c].load(std::memory_order_acquire);
-    inner_reload_2:
-      unsort = old_val & counter_mask;
-      flag = (old_val >> 31) & 1;
-      sort = old_val >> 32;
-      if (flag)
-        goto inner_reload_1;
-      if (unsort > sort) {
-        idx_j = sort++;
-        new_val = (sort << 32) | unsort;
-        if (!(*shared_counters)[idx_c].compare_exchange_strong
-            (old_val, new_val,
-             std::memory_order_acq_rel,
-             std::memory_order_acq_rel)) {
-          goto inner_reload_2;
-        }
+      while ((*locks)[idx_c].test_and_set(std::memory_order_acquire))
+        ; // acquire the lock
+      if ((*sort_indexes)[idx_c].first > (*sort_indexes)[idx_c].second) {
+        // We have a blank spot to fill tmp_bucket in
+        idx_j = (*sort_indexes)[idx_c].second++;
         dst[idx_j] = std::move(tmp_bucket);
+        (*locks)[idx_c].clear(std::memory_order_release);
         break;
       }
-      assert(unsort == sort);
-      idx_j = sort++;
-      unsort++;
-      new_val = (sort << 32) | unsort;
-      if (!(*shared_counters)[idx_c].compare_exchange_strong
-          (old_val, new_val,
-           std::memory_order_acq_rel,
-           std::memory_order_acq_rel)) {
-        goto inner_reload_2;
-      }
+      idx_j = (*sort_indexes)[idx_c].first;
+      (*sort_indexes)[idx_c].first++;
+      (*sort_indexes)[idx_c].second++;
       std::swap(tmp_bucket, dst[idx_j]);
+      (*locks)[idx_c].clear(std::memory_order_release);
     }
   }
 }
@@ -653,25 +615,33 @@ void radix_inplace_par(RandomAccessIterator dst,
   shift = 64 - partition_bits;
 
   std::vector<std::atomic_ullong> shared_counters(partitions);
+  std::vector<std::atomic_flag> locks(partitions);
   std::vector<std::pair<unsigned int, unsigned int>> indexes(partitions);
+  std::vector<std::pair<unsigned int, unsigned int>> sort_indexes(partitions);
   std::vector<std::thread> threads(num_threads);
+
+  for (auto& lock : locks) {
+    lock.clear();
+  }
 
   for (int i = 0; i < num_threads-1; i++) {
     threads[i] = std::thread(radix_hash_bf8_worker<Key,Value,
                              RandomAccessIterator>,
                              dst, i * thread_partition,
                              (i+1) * thread_partition,
-                             i, &barrier, &shared_counters, &indexes,
+                             i, &barrier, &locks, &shared_counters,
+                             &sort_indexes, &indexes,
                              partitions, shift);
   }
 
   radix_hash_bf8_worker<Key,Value>(dst, (num_threads-1)*thread_partition,
-                                   input_num, num_threads-1, &barrier,
-                                   &shared_counters, &indexes,
+                                   input_num, num_threads-1, &barrier, &locks,
+                                   &shared_counters, &sort_indexes, &indexes,
                                    partitions, shift);
   for (int i = 0; i < num_threads-1; i++) {
     threads[i].join();
   }
+  std::cout << "finished first phase\n";
 
   new_mask_bits = 64 - partition_bits;
 
