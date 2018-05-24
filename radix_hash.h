@@ -28,6 +28,7 @@
 #include <atomic>
 #include <thread>
 #include <cmath>
+#include <mutex>
 #include "thread_barrier.h"
 
 // namespace radix_hash?
@@ -506,7 +507,8 @@ template<typename Key,
                              unsigned int end,
                              unsigned int thread_id,
                              ThreadBarrier* barrier,
-                             std::vector<std::atomic_flag>* locks,
+                             //std::vector<std::atomic_flag>* locks,
+                             std::vector<std::mutex>* locks,
                              std::vector<std::atomic_ullong>* shared_counters,
                              std::vector<std::pair<unsigned int, unsigned int>>* sort_indexes,
                              std::vector<std::pair<unsigned int, unsigned int>>* indexes,
@@ -548,13 +550,12 @@ template<typename Key,
   }
 
   // scatter threads in partitions
-  iter = (thread_id*7) % partitions;
+  iter = (thread_id*17) % partitions;
   while (iter < partitions) {
-    while ((*locks)[iter].test_and_set(std::memory_order_acquire))
-      ; // acquire the lock
+    (*locks)[iter].lock();
     if ((*sort_indexes)[iter].first >= (*indexes)[iter].second ||
         (*sort_indexes)[iter].second >= (*indexes)[iter].second) {
-      (*locks)[iter].clear(std::memory_order_release);
+      (*locks)[iter].unlock();
       iter++;
       continue;
     }
@@ -570,24 +571,23 @@ template<typename Key,
     //}
 
     tmp_bucket = std::move(dst[idx_i]);
-    (*locks)[iter].clear(std::memory_order_release);
+    (*locks)[iter].unlock();
     while (true) {
       h = std::get<0>(tmp_bucket);
       idx_c = h >> shift;
-      while ((*locks)[idx_c].test_and_set(std::memory_order_acquire))
-        ; // acquire the lock
+      (*locks)[idx_c].lock();
       if ((*sort_indexes)[idx_c].first > (*sort_indexes)[idx_c].second) {
         // We have a blank spot to fill tmp_bucket in
         idx_j = (*sort_indexes)[idx_c].second++;
         dst[idx_j] = std::move(tmp_bucket);
-        (*locks)[idx_c].clear(std::memory_order_release);
+        (*locks)[idx_c].unlock();
         break;
       }
       idx_j = (*sort_indexes)[idx_c].first;
       (*sort_indexes)[idx_c].first++;
       (*sort_indexes)[idx_c].second++;
       std::swap(tmp_bucket, dst[idx_j]);
-      (*locks)[idx_c].clear(std::memory_order_release);
+      (*locks)[idx_c].unlock();
     }
   }
 }
@@ -612,14 +612,10 @@ void radix_inplace_par(RandomAccessIterator dst,
   shift = 64 - partition_bits;
 
   std::vector<std::atomic_ullong> shared_counters(partitions);
-  std::vector<std::atomic_flag> locks(partitions);
+  std::vector<std::mutex> locks(partitions);
   std::vector<std::pair<unsigned int, unsigned int>> indexes(partitions);
   std::vector<std::pair<unsigned int, unsigned int>> sort_indexes(partitions);
   std::vector<std::thread> threads(num_threads);
-
-  for (auto& lock : locks) {
-    lock.clear();
-  }
 
   for (int i = 0; i < num_threads-1; i++) {
     threads[i] = std::thread(radix_hash_bf8_worker<Key,Value,
