@@ -44,20 +44,14 @@ optimal_partition(unsigned int input_num) {
     double bottom = floor(log_k_input);
     double dist = log_k_input - bottom < top - log_k_input ?
      log_k_input - bottom : top - log_k_input;
-    std::cout << "k-bit: " << k 
-              << " dist: " << dist << "\n";
     if (input_num < (1<<k)) {
-      std::cout << "k-star: " << k
-                << " dist: " << dist << "\n";
       return k;
     }
-    if (dist < min_dist) {
+    if (dist <= min_dist) {
       candidate = k;
       min_dist = dist;
     }
   }
-  std::cout << "k-star: " << candidate
-            << " dist: " << min_dist << "\n";
   return candidate;
 }
 
@@ -404,7 +398,6 @@ template <typename Key,
   }
 
   new_mask_bits = 64 - partition_bits;
-  std::cout << "non inplace copy finished\n";
 
   for (int i = 0; i < num_threads-1; i++) {
     threads[i] = std::thread(bf6_helper_p<Key,Value, RandomAccessIterator>,
@@ -554,7 +547,8 @@ template<typename Key,
     barrier->wait();
   }
 
-  iter = thread_id % partitions;
+  // scatter threads in partitions
+  iter = (thread_id*7) % partitions;
   while (iter < partitions) {
     while ((*locks)[iter].test_and_set(std::memory_order_acquire))
       ; // acquire the lock
@@ -565,6 +559,8 @@ template<typename Key,
       continue;
     }
     idx_i = (*sort_indexes)[iter].first++;
+
+    // problematic part
     //h = std::get<0>(dst[idx_i]);
     //idx_c = h >> shift;
     //if (idx_c == iter) {
@@ -572,6 +568,7 @@ template<typename Key,
     //  (*locks)[iter].clear(std::memory_order_release);
     //  continue;
     //}
+
     tmp_bucket = std::move(dst[idx_i]);
     (*locks)[iter].clear(std::memory_order_release);
     while (true) {
@@ -641,7 +638,6 @@ void radix_inplace_par(RandomAccessIterator dst,
   for (int i = 0; i < num_threads-1; i++) {
     threads[i].join();
   }
-  std::cout << "finished first phase\n";
 
   new_mask_bits = 64 - partition_bits;
 
