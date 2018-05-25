@@ -553,22 +553,23 @@ template<typename Key,
   iter = (thread_id*17) % partitions;
   while (iter < partitions) {
     (*locks)[iter].lock();
-    if ((*sort_indexes)[iter].first >= (*indexes)[iter].second ||
-        (*sort_indexes)[iter].second >= (*indexes)[iter].second) {
+   retry_no_lock:
+    if ((*sort_indexes)[iter].first >= (*indexes)[iter].second) {
       (*locks)[iter].unlock();
       iter++;
       continue;
     }
     idx_i = (*sort_indexes)[iter].first++;
 
-    // problematic part
-    //h = std::get<0>(dst[idx_i]);
-    //idx_c = h >> shift;
-    //if (idx_c == iter) {
-    //  (*sort_indexes)[iter].second++;
-    //  (*locks)[iter].clear(std::memory_order_release);
-    //  continue;
-    //}
+    h = std::get<0>(dst[idx_i]);
+    idx_c = h >> shift;
+    if (idx_c == iter) {
+      idx_j = (*sort_indexes)[iter].second++;
+      if (idx_i != idx_j) {
+        std::swap(dst[idx_i], dst[idx_j]);
+      }
+      goto retry_no_lock;
+    }
 
     tmp_bucket = std::move(dst[idx_i]);
     (*locks)[iter].unlock();
