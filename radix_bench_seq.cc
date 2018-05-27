@@ -123,8 +123,6 @@ static void BM_radix_inplace_seq_int(benchmark::State& state) {
     input.push_back(std::make_pair(r, i));
   }
 
-  int partition_bits = radix_hash::optimal_partition(size);
-
   struct rusage u_before, u_after;
   getrusage(RUSAGE_SELF, &u_before);
 
@@ -134,8 +132,7 @@ static void BM_radix_inplace_seq_int(benchmark::State& state) {
     work = input;
     state.ResumeTiming();
     START_COUNTERS;
-    ::radix_int_inplace<std::size_t, uint64_t>(work.begin(), size,
-                                          partition_bits, 1);
+    ::radix_int_inplace<std::size_t, uint64_t>(work.begin(), size, 1);
     ACCUMULATE_COUNTERS;
   }
   REPORT_COUNTERS(state);

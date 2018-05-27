@@ -24,6 +24,7 @@
 #include <random>
 
 #include "tbb/parallel_sort.h"
+#include "radix_sort.h"
 #include "radix_hash.h"
 #include "strgen.h"
 #include "pdqsort/pdqsort.h"
@@ -37,6 +38,102 @@ bool str_tuple_cmp (std::tuple<std::size_t, std::string, uint64_t> a,
 bool pair_cmp (std::pair<std::size_t, uint64_t> a,
                std::pair<std::size_t, uint64_t> b) {
   return std::get<0>(a) < std::get<0>(b);
+}
+
+static void BM_tbb_sort_int(benchmark::State& state) {
+  int size = state.range(0);
+  std::default_random_engine generator;
+  std::uniform_int_distribution<std::size_t> distribution;
+  std::vector<std::pair<std::size_t, uint64_t>> input;
+  std::vector<std::pair<std::size_t, uint64_t>> work;
+  struct rusage u_before, u_after;
+  getrusage(RUSAGE_SELF, &u_before);
+
+  for (int i = 0; i < size; i++) {
+    std::size_t r = distribution(generator);
+    input.push_back(std::make_pair(r, i));
+  }
+
+  RESET_ACC_COUNTERS;
+  for (auto _ : state) {
+    state.PauseTiming();
+    work = input;
+    state.ResumeTiming();
+    START_COUNTERS;
+    tbb::parallel_sort(work.begin(), work.end(), pair_cmp);
+    ACCUMULATE_COUNTERS;
+  }
+  REPORT_COUNTERS(state);
+
+  getrusage(RUSAGE_SELF, &u_after);
+  state.SetComplexityN(state.range(0));
+  state.counters["Minor"] = u_after.ru_minflt - u_before.ru_minflt;
+  state.counters["Major"] = u_after.ru_majflt - u_before.ru_majflt;
+  state.counters["Swap"] = u_after.ru_nswap - u_before.ru_nswap;
+}
+
+static void BM_radix_inplace_par_int(benchmark::State& state) {
+  int size = state.range(0);
+  unsigned int cores = std::thread::hardware_concurrency();
+  std::default_random_engine generator;
+  std::uniform_int_distribution<std::size_t> distribution;
+  std::vector<std::pair<std::size_t, uint64_t>> input;
+  std::vector<std::pair<std::size_t, uint64_t>> work;
+  struct rusage u_before, u_after;
+  getrusage(RUSAGE_SELF, &u_before);
+
+  for (int i = 0; i < size; i++) {
+    std::size_t r = distribution(generator);
+    input.push_back(std::make_pair(r, i));
+  }
+
+  RESET_ACC_COUNTERS;
+  for (auto _ : state) {
+    state.PauseTiming();
+    work = input;
+    state.ResumeTiming();
+    START_COUNTERS;
+    ::radix_int_inplace<std::size_t, uint64_t>(work.begin(), size, cores);
+    ACCUMULATE_COUNTERS;
+  }
+  REPORT_COUNTERS(state);
+
+  getrusage(RUSAGE_SELF, &u_after);
+  state.SetComplexityN(state.range(0));
+  state.counters["Minor"] = u_after.ru_minflt - u_before.ru_minflt;
+  state.counters["Major"] = u_after.ru_majflt - u_before.ru_majflt;
+  state.counters["Swap"] = u_after.ru_nswap - u_before.ru_nswap;
+}
+
+static void BM_radix_non_inplace_par_int(benchmark::State& state) {
+  int size = state.range(0);
+  unsigned int cores = std::thread::hardware_concurrency();
+  std::default_random_engine generator;
+  std::uniform_int_distribution<std::size_t> distribution;
+  std::vector<std::pair<std::size_t, uint64_t>> input;
+  std::vector<std::pair<std::size_t, uint64_t>> work(size);
+  struct rusage u_before, u_after;
+  getrusage(RUSAGE_SELF, &u_before);
+
+  for (int i = 0; i < size; i++) {
+    std::size_t r = distribution(generator);
+    input.push_back(std::make_pair(r, i));
+  }
+
+  RESET_ACC_COUNTERS;
+  for (auto _ : state) {
+    START_COUNTERS;
+    ::radix_int_non_inplace<std::size_t, uint64_t>
+     (input.begin(), input.end(), work.begin(), cores);
+    ACCUMULATE_COUNTERS;
+  }
+  REPORT_COUNTERS(state);
+
+  getrusage(RUSAGE_SELF, &u_after);
+  state.SetComplexityN(state.range(0));
+  state.counters["Minor"] = u_after.ru_minflt - u_before.ru_minflt;
+  state.counters["Major"] = u_after.ru_majflt - u_before.ru_majflt;
+  state.counters["Swap"] = u_after.ru_nswap - u_before.ru_nswap;
 }
 
 static void BM_tbb_sort_str(benchmark::State& state) {
@@ -138,6 +235,10 @@ static void RadixArguments(benchmark::internal::Benchmark* b) {
       return;
   }
 }
+
+BENCHMARK(BM_tbb_sort_int)->Apply(RadixArguments);
+BENCHMARK(BM_radix_inplace_par_int)->Apply(RadixArguments);
+BENCHMARK(BM_radix_non_inplace_par_int)->Apply(RadixArguments);
 
 BENCHMARK(BM_tbb_sort_str)->Apply(RadixArguments);
 BENCHMARK(BM_radix_inplace_par_str)->Apply(RadixArguments);
