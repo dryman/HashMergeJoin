@@ -41,7 +41,7 @@ googletest/googletest/lib/libgtest_main.la \
 thread_barrier_test_LDFLAGS = -static
 
 bin_PROGRAMS = find_k_bench radix_hash_bench hashjoin_bench radix_sort_bench \
-radix_bench_seq
+radix_bench_seq radix_bench_par
 
 find_k_bench_SOURCES = find_k_bench.cc strgen.cc radix_hash.h radix_sort.h thread_barrier.h thread_barrier.cc
 find_k_bench_CXXFLAGS = -std=c++11 -Wall @PTHREAD_CFLAGS@ @PAPI_CFLAGS@
@@ -67,3 +67,8 @@ radix_bench_seq_SOURCES = radix_bench_seq.cc strgen.cc radix_hash.h radix_sort.h
 radix_bench_seq_CXXFLAGS = -std=c++11 -Wall @PTHREAD_CFLAGS@ @PAPI_CFLAGS@
 radix_bench_seq_LDADD = @PTHREAD_LIBS@ @PAPI_LIBS@
 radix_bench_seq_LDFLAGS = -lbenchmark
+
+radix_bench_par_SOURCES = radix_bench_par.cc strgen.cc radix_hash.h radix_sort.h thread_barrier.h thread_barrier.cc
+radix_bench_par_CXXFLAGS = -std=c++11 -Wall @PTHREAD_CFLAGS@ @PAPI_CFLAGS@
+radix_bench_par_LDADD = @PTHREAD_LIBS@ @PAPI_LIBS@
+radix_bench_par_LDFLAGS = -lbenchmark -ltbb -ltbbmalloc
