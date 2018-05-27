@@ -337,8 +337,8 @@ template <typename Key,
   typename RandomAccessIterator>
   void radix_int_inplace(RandomAccessIterator dst,
                          unsigned int input_num,
-                         int partition_bits,
-                         int num_threads) {
+                         int num_threads,
+                         int partition_bits) {
   static_assert(std::is_unsigned<Key>::value, "Key must be an unsigned arithmic type.");
   int shift, partitions, thread_partition, new_mask_bits;
   std::atomic_uint a_counter(0);
@@ -387,4 +387,140 @@ template <typename Key,
     threads[i].join();
   }
 }
+
+template <typename Key,
+  typename Value,
+  typename RandomAccessIterator>
+  void radix_int_inplace(RandomAccessIterator dst,
+                         unsigned int input_num,
+                         int num_threads) {
+  int partition_bits = radix_hash::optimal_partition(input_num);
+  radix_int_inplace<Key,Value,RandomAccessIterator>
+   (dst, input_num, num_threads, partition_bits);
+}
+
+template<typename Key,
+  typename Value,
+  typename BidirectionalIterator,
+  typename RandomAccessIterator>
+  void radix_sort_ni_worker(BidirectionalIterator begin,
+                            BidirectionalIterator end,
+                            RandomAccessIterator dst,
+                            unsigned int thread_id,
+                            unsigned int thread_num,
+                            ThreadBarrier* barrier,
+                            std::vector<unsigned int>* shared_counters,
+                            std::vector<std::pair<unsigned int, unsigned int>>* indexes,
+                            unsigned int partitions,
+                            int shift) {
+  Key h;
+  unsigned int dst_idx, tmp_cnt;
+
+  // TODO maybe we can make no sort version in worker as well.
+  for (auto iter = begin; iter != end; ++iter) {
+    h = iter->first;
+    (*shared_counters)[thread_id*partitions + (h>>shift)]++;
+  }
+
+  // in barrier
+  if (barrier->wait()) {
+    tmp_cnt = 0;
+    for (unsigned int i = 0; i < partitions; i++) {
+      for (unsigned int j = 0; j < thread_num; j++) {
+        tmp_cnt += (*shared_counters)[j*partitions + i];
+        (*shared_counters)[j*partitions + i] =
+          tmp_cnt - (*shared_counters)[j*partitions + i];
+      }
+    }
+    (*indexes)[0].first = 0;
+    for (unsigned int i = 1; i < partitions; i++) {
+      (*indexes)[i-1].second = (*indexes)[i].first = (*shared_counters)[i];
+    }
+    (*indexes)[partitions-1].second = tmp_cnt;
+
+    barrier->wait();
+  } else {
+    barrier->wait();
+  }
+
+  for (auto iter = begin; iter != end; ++iter) {
+    h = iter->first;
+    dst_idx = (*shared_counters)[thread_id*partitions + (h>>shift)]++;
+    std::get<0>(dst[dst_idx]) = h;
+    std::get<1>(dst[dst_idx]) = iter->second;
+  }
+}
+
+template <typename Key,
+  typename Value,
+  typename BidirectionalIterator,
+  typename RandomAccessIterator>
+  void radix_int_non_inplace(BidirectionalIterator begin,
+                             BidirectionalIterator end,
+                             RandomAccessIterator dst,
+                             int num_threads,
+                             int partition_bits) {
+  static_assert(std::is_unsigned<Key>::value, "Key must be an unsigned arithmic type.");
+  int input_num, shift, partitions, thread_partition, new_mask_bits;
+  std::atomic_uint a_counter(0);
+  ThreadBarrier barrier(num_threads);
+
+  partitions = 1 << partition_bits;
+  input_num = std::distance(begin, end);
+  thread_partition = input_num / num_threads;
+
+  shift = sizeof(Key)*8 - partition_bits;
+
+  std::vector<unsigned int> shared_counters(partitions*num_threads);
+  std::vector<std::pair<unsigned int, unsigned int>> indexes(partitions);
+  std::vector<std::thread> threads(num_threads);
+
+  for (int i = 0; i < num_threads-1; i++) {
+    threads[i] = std::thread
+     (radix_sort_ni_worker<Key, Value, BidirectionalIterator, RandomAccessIterator>,
+      begin + i * thread_partition,
+      begin + (i+1)*thread_partition,
+      dst, i, num_threads,
+      &barrier, &shared_counters, &indexes, partitions, shift);
+  }
+
+  radix_sort_ni_worker<Key, Value, BidirectionalIterator, RandomAccessIterator>
+   (begin + (num_threads-1)*thread_partition, end,
+    dst, num_threads-1, num_threads,
+    &barrier, &shared_counters, &indexes, partitions, shift);
+
+  for (int i = 0; i < num_threads-1; i++) {
+    threads[i].join();
+  }
+
+  new_mask_bits = sizeof(Key)*8 - partition_bits;
+
+  for (int i = 0; i < num_threads-1; i++) {
+    threads[i] = std::thread(rs1_helper_p<Key,Value, RandomAccessIterator>,
+                             dst, indexes, new_mask_bits,
+                             partition_bits, &a_counter);
+  }
+  rs1_helper_p<Key,Value, RandomAccessIterator>(
+      dst, indexes, new_mask_bits,
+      partition_bits, &a_counter);
+  for (int i = 0; i < num_threads-1; i++) {
+    threads[i].join();
+  }
+}
+
+template <typename Key,
+  typename Value,
+  typename BidirectionalIterator,
+  typename RandomAccessIterator>
+  void radix_int_non_inplace(BidirectionalIterator begin,
+                             BidirectionalIterator end,
+                             RandomAccessIterator dst,
+                             int num_threads) {
+  int input_num, partition_bits;
+  input_num = std::distance(begin, end);
+  partition_bits = radix_hash::optimal_partition(input_num);
+  radix_int_non_inplace<Key,Value,BidirectionalIterator,RandomAccessIterator>
+   (begin, end, dst, num_threads, partition_bits);
+}
+
 #endif

@@ -39,8 +39,30 @@ TEST(radix_sort_1_test, random_num) {
   std_sorted = input;
   std::sort(std_sorted.begin(), std_sorted.end(), pair_cmp);
 
-  ::radix_int_inplace<std::size_t,int>(input.begin(), size, 11, cores);
+  ::radix_int_inplace<std::size_t,int>(input.begin(), size, cores);
   for (int i = 0; i < size; i++) {
     EXPECT_EQ(std::get<0>(std_sorted[i]), std::get<0>(input[i]));
+  }
+}
+
+TEST(radix_sort_non_inplace_test, random_num) {
+  int size = 1<<16;
+  std::vector<std::pair<std::size_t, int>> src;
+  std::vector<std::pair<std::size_t, int>> dst(size);
+  std::vector<std::pair<std::size_t, int>> std_sorted;
+  std::default_random_engine generator;
+  std::uniform_int_distribution<std::size_t> distribution;
+  unsigned int cores = std::thread::hardware_concurrency();
+
+  for (int i = 0; i < size; i++) {
+    std::size_t r = distribution(generator);
+    src.push_back(std::make_pair(r, i));
+  }
+  std_sorted = src;
+  std::sort(std_sorted.begin(), std_sorted.end(), pair_cmp);
+
+  ::radix_int_non_inplace<std::size_t,int>(src.begin(), src.end(), dst.begin(), cores);
+  for (int i = 0; i < size; i++) {
+    EXPECT_EQ(std::get<0>(std_sorted[i]), std::get<0>(dst[i]));
   }
 }

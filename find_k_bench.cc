@@ -50,8 +50,7 @@ static void BM_radix_sort_int_seq(benchmark::State& state) {
     work = input;
     state.ResumeTiming();
     START_COUNTERS;
-    ::radix_int_inplace<std::size_t, uint64_t>(work.begin(), size,
-                                          state.range(0), 1);
+    ::radix_int_inplace<std::size_t, uint64_t>(work.begin(), size, 1, state.range(0));
     ACCUMULATE_COUNTERS;
   }
   REPORT_COUNTERS(state);

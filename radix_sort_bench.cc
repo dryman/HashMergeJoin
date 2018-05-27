@@ -162,8 +162,7 @@ static void BM_radix_sort_1_single(benchmark::State& state) {
     work = input;
     state.ResumeTiming();
     START_COUNTERS;
-    ::radix_int_inplace<std::size_t, uint64_t>(work.begin(), size,
-                                          state.range(1), 1);
+    ::radix_int_inplace<std::size_t, uint64_t>(work.begin(), size, 1);
     ACCUMULATE_COUNTERS;
   }
   REPORT_COUNTERS(state);
@@ -200,8 +199,7 @@ static void BM_radix_sort_1_multi(benchmark::State& state) {
     work = input;
     state.ResumeTiming();
     START_COUNTERS;
-    ::radix_int_inplace<std::size_t, uint64_t>(work.begin(), size,
-                                          state.range(1), cores);
+    ::radix_int_inplace<std::size_t, uint64_t>(work.begin(), size, cores);
     ACCUMULATE_COUNTERS;
   }
   REPORT_COUNTERS(state);
