@@ -199,7 +199,6 @@ static void BM_radix_inplace_par_str(benchmark::State& state) {
 static void BM_radix_non_inplace_par_str(benchmark::State& state) {
   int size = state.range(0);
   std::vector<std::tuple<std::size_t, std::string, uint64_t>> dst(size);
-  int partition_bits = radix_hash::optimal_partition(size);
   unsigned int cores = std::thread::hardware_concurrency();
   auto src = ::create_strvec(size);
   struct rusage u_before, u_after;
@@ -207,10 +206,16 @@ static void BM_radix_non_inplace_par_str(benchmark::State& state) {
 
   RESET_ACC_COUNTERS;
   for (auto _ : state) {
+    state.PauseTiming();
+    for (int i = 0; i < size; i++) {
+      std::get<0>(dst[i]) = 0;
+      std::get<1>(dst[i]) = "";
+      std::get<2>(dst[i]) = 0;
+    }
+    state.ResumeTiming();
     START_COUNTERS;
     radix_hash::radix_non_inplace_par<std::string,uint64_t>(src.begin(),
                                                             src.end(), dst.begin(),
-                                                            partition_bits,
                                                             cores);
     ACCUMULATE_COUNTERS;
   }
@@ -225,8 +230,7 @@ static void BM_radix_non_inplace_par_str(benchmark::State& state) {
 
 static void RadixArguments(benchmark::internal::Benchmark* b) {
   uint64_t i = 10*1000;
-  //uint64_t max = 1000*1000*1000;
-  uint64_t max = 1000*1000;
+  uint64_t max = 1000*1000*1000;
   for (;i <= max; i*=10) {
     b->Args({(int)i});
     if (i <= max)
