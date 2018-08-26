@@ -35,8 +35,8 @@
 template<typename RandomAccessIterator, typename Key>
 static inline
 void rs1_insertion_inner(RandomAccessIterator dst,
-                         unsigned int idx,
-                         unsigned int limit) {
+                         std::size_t idx,
+                         std::size_t limit) {
   Key h1, h2;
   while (idx > limit) {
     h1 = std::get<0>(dst[idx]);
@@ -53,9 +53,9 @@ void rs1_insertion_inner(RandomAccessIterator dst,
 template<typename RandomAccessIterator, typename Key>
 static inline
 void rs1_insertion_outer(RandomAccessIterator dst,
-                         unsigned int idx_begin,
-                         unsigned int idx_end) {
-  for (unsigned int idx = idx_begin + 1;
+                         std::size_t idx_begin,
+                         std::size_t idx_end) {
+  for (std::size_t idx = idx_begin + 1;
        idx < idx_end; idx++) {
     rs1_insertion_inner<RandomAccessIterator, Key>(dst, idx, idx_begin);
   }
@@ -65,13 +65,13 @@ template <typename Key,
   typename Value,
   typename RandomAccessIterator>
   void rs1_helper_s(RandomAccessIterator dst,
-                    const unsigned int (*super_indexes)[2],
+                    const std::size_t (*super_indexes)[2],
                     int mask_bits,
                     int partition_bits) {
   std::pair<Key, Value> tmp_bucket;
   Key h, mask;
-  unsigned int partitions, sqrt_partitions, shift,
-    idx_i, idx_j, idx_c, s_begin, s_end, iter;
+  int partitions, sqrt_partitions, shift;
+  std::size_t idx_i, idx_j, idx_c, s_begin, s_end, iter;
   int new_mask_bits;
 
   partitions = 1 << partition_bits;
@@ -80,10 +80,10 @@ template <typename Key,
   mask -= 1;
   shift = mask_bits < partition_bits ? 0 : mask_bits - partition_bits;
 
-  unsigned int counters[partitions];
-  unsigned int indexes[partitions][2];
+  std::size_t counters[partitions];
+  std::size_t indexes[partitions][2];
 
-  for (unsigned int s = 0; s < partitions; s++) {
+  for (int s = 0; s < partitions; s++) {
     s_begin = super_indexes[s][0];
     s_end = super_indexes[s][1];
     if (s_end - s_begin < 2)
@@ -94,14 +94,14 @@ template <typename Key,
       continue;
     }
     // Setup counters for counting sort.
-    for (unsigned int i = 0; i < partitions; i++)
+    for (int i = 0; i < partitions; i++)
       counters[i] = 0;
     indexes[0][0] = s_begin;
-    for (unsigned int i = s_begin; i < s_end; i++) {
+    for (std::size_t i = s_begin; i < s_end; i++) {
       h = std::get<0>(dst[i]);
       counters[(h & mask) >> shift]++;
     }
-    for (unsigned int i = 0; i < partitions - 1; i++) {
+    for (int i = 0; i < partitions - 1; i++) {
       indexes[i][1] = indexes[i+1][0] = indexes[i][0] + counters[i];
     }
     indexes[partitions-1][1] = indexes[partitions-1][0]
@@ -136,7 +136,7 @@ template <typename Key,
 
     // Reset indexes
     indexes[0][0] = s_begin;
-    for (unsigned int i = 1; i < partitions; i++) {
+    for (int i = 1; i < partitions; i++) {
       indexes[i][0] = indexes[i-1][1];
     }
     rs1_helper_s<Key,Value,RandomAccessIterator>
@@ -148,16 +148,14 @@ template <typename Key,
   typename Value,
   typename RandomAccessIterator>
   void rs1_helper_p(RandomAccessIterator dst,
-                    const std::vector<std::pair<unsigned int,
-                    unsigned int>>& super_indexes,
+                    const std::vector<std::pair<std::size_t, std::size_t>>& super_indexes,
                     int mask_bits,
                     int partition_bits,
-                    std::atomic_uint* super_counter) {
+                    std::atomic_int* super_counter) {
   std::pair<Key, Value> tmp_bucket;
   Key h, mask;
-  unsigned int s_idx, partitions, sqrt_partitions, shift,
-    idx_i, idx_j, idx_c, s_begin, s_end, iter;
-  int new_mask_bits;
+  int s_idx, partitions, sqrt_partitions, shift, new_mask_bits, iter;
+  std::size_t idx_i, idx_j, idx_c, s_begin, s_end;
 
   partitions = 1 << partition_bits;
   sqrt_partitions = 1 << (partition_bits / 2);
@@ -165,8 +163,8 @@ template <typename Key,
   mask -= 1;
   shift = mask_bits < partition_bits ? 0 : mask_bits - partition_bits;
 
-  unsigned int counters[partitions];
-  unsigned int indexes[partitions][2];
+  std::size_t counters[partitions];
+  std::size_t indexes[partitions][2];
 
   s_idx = super_counter->fetch_add(1, std::memory_order_relaxed);
 
@@ -186,14 +184,14 @@ template <typename Key,
       continue;
     }
     // Setup counters for counting sort.
-    for (unsigned int i = 0; i < partitions; i++)
+    for (int i = 0; i < partitions; i++)
       counters[i] = 0;
     indexes[0][0] = s_begin;
-    for (unsigned int i = s_begin; i < s_end; i++) {
+    for (std::size_t i = s_begin; i < s_end; i++) {
       h = std::get<0>(dst[i]);
       counters[(h & mask) >> shift]++;
     }
-    for (unsigned int i = 0; i < partitions - 1; i++) {
+    for (int i = 0; i < partitions - 1; i++) {
       indexes[i][1] = indexes[i+1][0] = indexes[i][0] + counters[i];
     }
     indexes[partitions-1][1] = indexes[partitions-1][0]
@@ -230,7 +228,7 @@ template <typename Key,
 
     // Reset indexes
     indexes[0][0] = s_begin;
-    for (unsigned int i = 1; i < partitions; i++) {
+    for (int i = 1; i < partitions; i++) {
       indexes[i][0] = indexes[i-1][1];
     }
     rs1_helper_s<Key,Value,RandomAccessIterator>
@@ -243,30 +241,30 @@ template<typename Key,
   typename Value,
   typename RandomAccessIterator>
   void rs1_worker(RandomAccessIterator dst,
-                  unsigned int begin,
-                  unsigned int end,
-                  unsigned int thread_id,
+                  std::size_t begin,
+                  std::size_t end,
+                  int thread_id,
                   ThreadBarrier* barrier,
                   std::vector<std::mutex>* locks,
                   std::vector<std::atomic_ullong>* shared_counters,
-                  std::vector<std::pair<unsigned int, unsigned int>>* sort_indexes,
-                  std::vector<std::pair<unsigned int, unsigned int>>* indexes,
-                  unsigned int partitions,
+                  std::vector<std::pair<std::size_t, std::size_t>>* sort_indexes,
+                  std::vector<std::pair<std::size_t, std::size_t>>* indexes,
+                  int partitions,
                   int shift) {
   Key h;
-  int local_counters[partitions];
-  unsigned long long old_val, new_val, unsort, sort, flag, counter_mask;
-  unsigned int iter, idx_i, idx_j, idx_c;
+  std::size_t local_counters[partitions];
+  std::size_t idx_i, idx_j, idx_c;
   std::pair<Key, Value> tmp_bucket;
+  int iter;
 
-  for (unsigned int i = 0; i < partitions; i++)
+  for (int i = 0; i < partitions; i++)
     local_counters[i] = 0;
 
-  for (unsigned int i = begin; i < end; ++i) {
+  for (std::size_t i = begin; i < end; ++i) {
     h = std::get<0>(dst[i]);
     local_counters[h >> shift]++;
   }
-  for (unsigned int i = 0; i < partitions; i++) {
+  for (int i = 0; i < partitions; i++) {
     (*shared_counters)[i].fetch_add(local_counters[i],
                                     std::memory_order_relaxed);
   }
@@ -275,7 +273,7 @@ template<typename Key,
   if (barrier->wait()) {
     local_counters[0] = 0;
     (*indexes)[0].first = 0;
-    for (unsigned int i = 0; i < partitions - 1; i++) {
+    for (int i = 0; i < partitions - 1; i++) {
       (*indexes)[i].second =
        (*sort_indexes)[i+1].first =
        (*sort_indexes)[i+1].second = 
@@ -336,12 +334,12 @@ template <typename Key,
   typename Value,
   typename RandomAccessIterator>
   void radix_int_inplace(RandomAccessIterator dst,
-                         unsigned int input_num,
+                         std::size_t input_num,
                          int num_threads,
                          int partition_bits) {
   static_assert(std::is_unsigned<Key>::value, "Key must be an unsigned arithmic type.");
   int shift, partitions, thread_partition, new_mask_bits;
-  std::atomic_uint a_counter(0);
+  std::atomic_int a_counter(0);
   ThreadBarrier barrier(num_threads);
 
   partitions = 1 << partition_bits;
@@ -351,8 +349,8 @@ template <typename Key,
 
   std::vector<std::atomic_ullong> shared_counters(partitions);
   std::vector<std::mutex> locks(partitions);
-  std::vector<std::pair<unsigned int, unsigned int>> indexes(partitions);
-  std::vector<std::pair<unsigned int, unsigned int>> sort_indexes(partitions);
+  std::vector<std::pair<std::size_t, std::size_t>> indexes(partitions);
+  std::vector<std::pair<std::size_t, std::size_t>> sort_indexes(partitions);
   std::vector<std::thread> threads(num_threads);
 
   for (int i = 0; i < num_threads-1; i++) {
@@ -406,15 +404,15 @@ template<typename Key,
   void radix_sort_ni_worker(BidirectionalIterator begin,
                             BidirectionalIterator end,
                             RandomAccessIterator dst,
-                            unsigned int thread_id,
-                            unsigned int thread_num,
+                            int thread_id,
+                            int thread_num,
                             ThreadBarrier* barrier,
-                            std::vector<unsigned int>* shared_counters,
-                            std::vector<std::pair<unsigned int, unsigned int>>* indexes,
-                            unsigned int partitions,
+                            std::vector<std::size_t>* shared_counters,
+                            std::vector<std::pair<std::size_t, std::size_t>>* indexes,
+                            int partitions,
                             int shift) {
   Key h;
-  unsigned int dst_idx, tmp_cnt;
+  std::size_t dst_idx, tmp_cnt;
 
   // TODO maybe we can make no sort version in worker as well.
   for (auto iter = begin; iter != end; ++iter) {
@@ -425,15 +423,15 @@ template<typename Key,
   // in barrier
   if (barrier->wait()) {
     tmp_cnt = 0;
-    for (unsigned int i = 0; i < partitions; i++) {
-      for (unsigned int j = 0; j < thread_num; j++) {
+    for (int i = 0; i < partitions; i++) {
+      for (int j = 0; j < thread_num; j++) {
         tmp_cnt += (*shared_counters)[j*partitions + i];
         (*shared_counters)[j*partitions + i] =
           tmp_cnt - (*shared_counters)[j*partitions + i];
       }
     }
     (*indexes)[0].first = 0;
-    for (unsigned int i = 1; i < partitions; i++) {
+    for (int i = 1; i < partitions; i++) {
       (*indexes)[i-1].second = (*indexes)[i].first = (*shared_counters)[i];
     }
     (*indexes)[partitions-1].second = tmp_cnt;
@@ -462,7 +460,7 @@ template <typename Key,
                              int partition_bits) {
   static_assert(std::is_unsigned<Key>::value, "Key must be an unsigned arithmic type.");
   int input_num, shift, partitions, thread_partition, new_mask_bits;
-  std::atomic_uint a_counter(0);
+  std::atomic_int a_counter(0);
   ThreadBarrier barrier(num_threads);
 
   partitions = 1 << partition_bits;
@@ -471,8 +469,8 @@ template <typename Key,
 
   shift = sizeof(Key)*8 - partition_bits;
 
-  std::vector<unsigned int> shared_counters(partitions*num_threads);
-  std::vector<std::pair<unsigned int, unsigned int>> indexes(partitions);
+  std::vector<std::size_t> shared_counters(partitions*num_threads);
+  std::vector<std::pair<std::size_t, std::size_t>> indexes(partitions);
   std::vector<std::thread> threads(num_threads);
 
   for (int i = 0; i < num_threads-1; i++) {
