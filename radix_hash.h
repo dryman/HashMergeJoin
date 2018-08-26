@@ -36,7 +36,7 @@ namespace radix_hash {
 
 // returns partition bits
 static inline int
-optimal_partition(unsigned int input_num) {
+optimal_partition(std::size_t input_num) {
   double min_dist = 1.0;
   int candidate = 0;
   for (int k = 6; k < 15; k++) {
@@ -86,8 +86,8 @@ template<typename Key,
 template<typename RandomAccessIterator>
 static inline
 void bf6_insertion_inner(RandomAccessIterator dst,
-                         unsigned int idx,
-                         unsigned int limit) {
+                         std::size_t idx,
+                         std::size_t limit) {
   std::size_t h1, h2;
   while (idx > limit) {
     h1 = std::get<0>(dst[idx]);
@@ -111,9 +111,9 @@ void bf6_insertion_inner(RandomAccessIterator dst,
 template<typename RandomAccessIterator>
 static inline
 void bf6_insertion_outer(RandomAccessIterator dst,
-                         unsigned int idx_begin,
-                         unsigned int idx_end) {
-  for (unsigned int idx = idx_begin + 1;
+                         std::size_t idx_begin,
+                         std::size_t idx_end) {
+  for (std::size_t idx = idx_begin + 1;
        idx < idx_end; idx++) {
     bf6_insertion_inner<RandomAccessIterator>(dst, idx, idx_begin);
   }
@@ -123,50 +123,45 @@ template <typename Key,
   typename Value,
   typename RandomAccessIterator>
   void bf6_helper_s(RandomAccessIterator dst,
-                    const std::vector<std::pair<unsigned int, unsigned int>>& super_indexes,
+                    const std::vector<std::pair<std::size_t, std::size_t>>& super_indexes,
                     int mask_bits,
                     int partition_bits) {
   std::tuple<std::size_t, Key, Value> tmp_bucket;
-  std::size_t h, mask;
-  unsigned int partitions, sqrt_partitions, shift,
-    idx_i, idx_j, idx_c, s_begin, s_end, iter;
-  int new_mask_bits;
+  int partitions, sqrt_partitions, iter, shift, new_mask_bits, idx_c;
+  std::size_t h, mask, s_begin, s_end, idx_i, idx_j;
 
   partitions = 1 << partition_bits;
   sqrt_partitions = 1 << (partition_bits / 2);
   mask = (1ULL << mask_bits) - 1ULL;
   shift = mask_bits < partition_bits ? 0 : mask_bits - partition_bits;
 
-  std::vector<unsigned int>counters(partitions);
-  std::vector<std::pair<unsigned int, unsigned int>> indexes(partitions);
-  //unsigned int counters[partitions];
-  //unsigned int indexes[partitions][2];
+  std::vector<std::size_t>counters(partitions);
+  std::vector<std::pair<std::size_t, std::size_t>> indexes(partitions);
 
-  for (unsigned int s = 0; s < partitions; s++) {
+  for (int s = 0; s < partitions; s++) {
     s_begin = super_indexes[s].first;
     s_end = super_indexes[s].second;
     if (s_end - s_begin < 2)
       continue;
     // Partition too small, use insertion sort instead.
-    if (s_end - s_begin < sqrt_partitions) {
+    if (s_end - s_begin < static_cast<std::size_t>(sqrt_partitions)) {
       bf6_insertion_outer<RandomAccessIterator>(dst, s_begin, s_end);
       continue;
     }
     // Setup counters for counting sort.
-    for (unsigned int i = 0; i < partitions; i++)
+    for (int i = 0; i < partitions; i++)
       counters[i] = 0;
     indexes[0].first = s_begin;
-    for (unsigned int i = s_begin; i < s_end; i++) {
+    for (std::size_t i = s_begin; i < s_end; i++) {
       h = std::get<0>(dst[i]);
       counters[(h & mask) >> shift]++;
     }
-    for (unsigned int i = 0; i < partitions - 1; i++) {
+    for (int i = 0; i < partitions - 1; i++) {
       indexes[i].second = indexes[i+1].first = indexes[i].first + counters[i];
     }
     indexes[partitions-1].second = indexes[partitions-1].first
       + counters[partitions-1];
 
-    new_mask_bits = mask_bits - partition_bits;
     iter = 0;
     while (iter < partitions) {
       idx_i = indexes[iter].first;
@@ -175,7 +170,7 @@ template <typename Key,
         continue;
       }
       h = std::get<0>(dst[idx_i]);
-      idx_c = (h & mask) >> shift;
+      idx_c = static_cast<int>((h & mask) >> shift);
       if (idx_c == iter) {
         indexes[iter].first++;
         continue;
@@ -183,19 +178,20 @@ template <typename Key,
       tmp_bucket = std::move(dst[idx_i]);
       do {
         h = std::get<0>(tmp_bucket);
-        idx_c = (h & mask) >> shift;
+        idx_c = static_cast<int>((h & mask) >> shift);
         idx_j = indexes[idx_c].first++;
         std::swap(dst[idx_j], tmp_bucket);
       } while (idx_j > idx_i);
     }
 
+    new_mask_bits = mask_bits - partition_bits;
     if (new_mask_bits <= 0) {
       continue;
     }
 
     // Reset indexes
     indexes[0].first = s_begin;
-    for (unsigned int i = 1; i < partitions; i++) {
+    for (int i = 1; i < partitions; i++) {
       indexes[i].first = indexes[i-1].second;
     }
     bf6_helper_s<Key,Value,RandomAccessIterator>
@@ -207,14 +203,15 @@ template <typename Key,
   typename Value,
   typename RandomAccessIterator>
   void bf6_helper_p(RandomAccessIterator dst,
-                    const std::vector<std::pair<unsigned int, unsigned int>>& super_indexes,
+                    const std::vector<std::pair<std::size_t, std::size_t>>& super_indexes,
                     int mask_bits,
                     int partition_bits,
-                    std::atomic_uint* super_counter) {
+                    std::atomic_int* super_counter) {
   std::tuple<std::size_t, Key, Value> tmp_bucket;
   std::size_t h, mask;
-  unsigned int s_idx, partitions, sqrt_partitions, shift,
-    idx_i, idx_j, idx_c, s_begin, s_end, iter;
+  int partitions, sqrt_partitions, s_idx, iter, idx_c;
+  std::size_t idx_i, idx_j, s_begin, s_end;
+  int shift;
   int new_mask_bits;
 
   partitions = 1 << partition_bits;
@@ -222,15 +219,11 @@ template <typename Key,
   mask = (1ULL << mask_bits) - 1ULL;
   shift = mask_bits < partition_bits ? 0 : mask_bits - partition_bits;
 
-  std::vector<unsigned int>counters(partitions);
-  std::vector<std::pair<unsigned int, unsigned int>> indexes(partitions);
-  //unsigned int counters[partitions];
-  //unsigned int indexes[partitions][2];
+  std::vector<std::size_t>counters(partitions);
+  std::vector<std::pair<std::size_t, std::size_t>> indexes(partitions);
 
   s_idx = super_counter->fetch_add(1, std::memory_order_relaxed);
 
-  // TODO change s to a atomic variable and use a boolean to determine
-  // to use it or not.
   while (s_idx < partitions) {
     s_begin = super_indexes[s_idx].first;
     s_end = super_indexes[s_idx].second;
@@ -239,26 +232,25 @@ template <typename Key,
       continue;
     }
     // Partition too small, use insertion sort instead.
-    if (s_end - s_begin < sqrt_partitions) {
+    if (s_end - s_begin < static_cast<std::size_t>(sqrt_partitions)) {
       bf6_insertion_outer<RandomAccessIterator>(dst, s_begin, s_end);
       s_idx = super_counter->fetch_add(1, std::memory_order_relaxed);
       continue;
     }
     // Setup counters for counting sort.
-    for (unsigned int i = 0; i < partitions; i++)
+    for (int i = 0; i < partitions; i++)
       counters[i] = 0;
     indexes[0].first = s_begin;
-    for (unsigned int i = s_begin; i < s_end; i++) {
+    for (std::size_t i = s_begin; i < s_end; i++) {
       h = std::get<0>(dst[i]);
       counters[(h & mask) >> shift]++;
     }
-    for (unsigned int i = 0; i < partitions - 1; i++) {
+    for (int i = 0; i < partitions - 1; i++) {
       indexes[i].second = indexes[i+1].first = indexes[i].first + counters[i];
     }
     indexes[partitions-1].second = indexes[partitions-1].first
       + counters[partitions-1];
 
-    new_mask_bits = mask_bits - partition_bits;
     iter = 0;
 
     while (iter < partitions) {
@@ -268,7 +260,7 @@ template <typename Key,
         continue;
       }
       h = std::get<0>(dst[idx_i]);
-      idx_c = (h & mask) >> shift;
+      idx_c = static_cast<int>((h & mask) >> shift);
       if (idx_c == iter) {
         indexes[iter].first++;
         continue;
@@ -276,12 +268,13 @@ template <typename Key,
       tmp_bucket = std::move(dst[idx_i]);
       do {
         h = std::get<0>(tmp_bucket);
-        idx_c = (h & mask) >> shift;
+        idx_c = static_cast<int>((h & mask) >> shift);
         idx_j = indexes[idx_c].first++;
         std::swap(dst[idx_j], tmp_bucket);
       } while (idx_j > idx_i);
     }
 
+    new_mask_bits = mask_bits - partition_bits;
     if (new_mask_bits <= 0) {
       s_idx = super_counter->fetch_add(1, std::memory_order_relaxed);
       continue;
@@ -289,7 +282,7 @@ template <typename Key,
 
     // Reset indexes
     indexes[0].first = s_begin;
-    for (unsigned int i = 1; i < partitions; i++) {
+    for (int i = 1; i < partitions; i++) {
       indexes[i].first = indexes[i-1].second;
     }
     bf6_helper_s<Key,Value,RandomAccessIterator>
@@ -306,16 +299,15 @@ template<typename Key,
   void radix_hash_bf6_worker(BidirectionalIterator begin,
                              BidirectionalIterator end,
                              RandomAccessIterator dst,
-                             unsigned int thread_id,
-                             unsigned int thread_num,
+                             int thread_id,
+                             int thread_num,
                              ThreadBarrier* barrier,
-                             std::vector<unsigned int>* shared_counters,
-                             std::vector<std::pair<unsigned int,
-                             unsigned int>>* indexes,
-                             unsigned int partitions,
+                             std::vector<std::size_t>* shared_counters,
+                             std::vector<std::pair<std::size_t,std::size_t>>* indexes,
+                             int partitions,
                              int shift) {
   std::size_t h;
-  unsigned int dst_idx, tmp_cnt;
+  std::size_t dst_idx, tmp_cnt;
 
   // TODO maybe we can make no sort version in worker as well.
   for (auto iter = begin; iter != end; ++iter) {
@@ -326,15 +318,15 @@ template<typename Key,
   // in barrier
   if (barrier->wait()) {
     tmp_cnt = 0;
-    for (unsigned int i = 0; i < partitions; i++) {
-      for (unsigned int j = 0; j < thread_num; j++) {
+    for (int i = 0; i < partitions; i++) {
+      for (int j = 0; j < thread_num; j++) {
         tmp_cnt += (*shared_counters)[j*partitions + i];
         (*shared_counters)[j*partitions + i] =
           tmp_cnt - (*shared_counters)[j*partitions + i];
       }
     }
     (*indexes)[0].first = 0;
-    for (unsigned int i = 1; i < partitions; i++) {
+    for (int i = 1; i < partitions; i++) {
       (*indexes)[i-1].second = (*indexes)[i].first = (*shared_counters)[i];
     }
     (*indexes)[partitions-1].second = tmp_cnt;
@@ -367,7 +359,7 @@ template <typename Key,
                              int num_threads,
                              int partition_bits) {
   int input_num, shift, partitions, thread_partition, new_mask_bits;
-  std::atomic_uint a_counter(0);
+  std::atomic_int a_counter(0);
   ThreadBarrier barrier(num_threads);
 
   partitions = 1 << partition_bits;
@@ -376,8 +368,8 @@ template <typename Key,
 
   shift = 64 - partition_bits;
 
-  std::vector<unsigned int> shared_counters(partitions*num_threads);
-  std::vector<std::pair<unsigned int, unsigned int>> indexes(partitions);
+  std::vector<std::size_t> shared_counters(partitions*num_threads);
+  std::vector<std::pair<std::size_t, std::size_t>> indexes(partitions);
   std::vector<std::thread> threads(num_threads);
 
   for (int i = 0; i < num_threads-1; i++) {
@@ -422,7 +414,8 @@ template <typename Key,
                              BidirectionalIterator end,
                              RandomAccessIterator dst,
                              int num_threads) {
-  int input_num, partition_bits;
+  std::size_t input_num;
+  int partition_bits;
   input_num = std::distance(begin, end);
   partition_bits = optimal_partition(input_num);
   radix_non_inplace_par<Key,Value,Hash,BidirectionalIterator,RandomAccessIterator>
@@ -433,29 +426,29 @@ template <typename Key,
   typename Value,
   typename RandomAccessIterator>
   void radix_inplace_seq(RandomAccessIterator dst,
-                         unsigned int input_num,
+                         std::size_t input_num,
                          int partition_bits) {
   int shift, new_mask_bits;
-  unsigned int iter, idx_i, idx_j, idx_c, partitions;
-  std::size_t h;
-  std::atomic_uint a_counter(0);
+  int iter, idx_c, partitions;
+  std::size_t h, idx_i, idx_j;
+  std::atomic_int a_counter(0);
   std::tuple<std::size_t, Key, Value> tmp_bucket;
 
   partitions = 1 << partition_bits;
   shift = 64 - partition_bits;
 
-  unsigned int counters[partitions];
-  std::vector<std::pair<unsigned int, unsigned int>> indexes(partitions);
+  std::size_t counters[partitions];
+  std::vector<std::pair<std::size_t, std::size_t>> indexes(partitions);
 
   // Setup counters for counting sort.
-  for (unsigned int i = 0; i < partitions; i++)
+  for (int i = 0; i < partitions; i++)
     counters[i] = 0;
   indexes[0].first = 0;
-  for (unsigned int i = 0; i < input_num; i++) {
+  for (std::size_t i = 0; i < input_num; i++) {
     h = std::get<0>(dst[i]);
     counters[h >> shift]++;
   }
-  for (unsigned int i = 0; i < partitions - 1; i++) {
+  for (int i = 0; i < partitions - 1; i++) {
     indexes[i].second = indexes[i+1].first = indexes[i].first + counters[i];
   }
   indexes[partitions-1].second = indexes[partitions-1].first
@@ -471,7 +464,7 @@ template <typename Key,
     tmp_bucket = std::move(dst[idx_i]);
     do {
       h = std::get<0>(tmp_bucket);
-      idx_c = h  >> shift;
+      idx_c = static_cast<int>(h >> shift);
       idx_j = indexes[idx_c].first++;
       std::swap(dst[idx_j], tmp_bucket);
     } while (idx_j > idx_i);
@@ -479,7 +472,7 @@ template <typename Key,
 
   // Reset indexes
   indexes[0].first = 0;
-  for (unsigned int i = 1; i < partitions; i++) {
+  for (int i = 1; i < partitions; i++) {
     indexes[i].first = indexes[i-1].second;
   }
   new_mask_bits = 64 - partition_bits;
@@ -493,7 +486,7 @@ template <typename Key,
   typename Value,
   typename RandomAccessIterator>
   void radix_inplace_seq(RandomAccessIterator dst,
-                         unsigned int input_num) {
+                         std::size_t input_num) {
   int partition_bits;
   partition_bits = optimal_partition(input_num);
   radix_inplace_seq<Key,Value,RandomAccessIterator>(dst, input_num, partition_bits);
@@ -503,29 +496,30 @@ template<typename Key,
   typename Value,
   typename RandomAccessIterator>
   void radix_hash_bf8_worker(RandomAccessIterator dst,
-                             unsigned int begin,
-                             unsigned int end,
-                             unsigned int thread_id,
+                             std::size_t begin,
+                             std::size_t end,
+                             int thread_id,
                              ThreadBarrier* barrier,
                              std::vector<std::mutex>* locks,
-                             std::vector<std::atomic_ullong>* shared_counters,
-                             std::vector<std::pair<unsigned int, unsigned int>>* sort_indexes,
-                             std::vector<std::pair<unsigned int, unsigned int>>* indexes,
-                             unsigned int partitions,
+                             std::vector<std::atomic_size_t>* shared_counters,
+                             std::vector<std::pair<std::size_t, std::size_t>>* sort_indexes,
+                             std::vector<std::pair<std::size_t, std::size_t>>* indexes,
+                             int partitions,
                              int shift) {
   std::size_t h;
-  int local_counters[partitions];
-  unsigned int iter, idx_i, idx_j, idx_c;
+  std::size_t local_counters[partitions];
+  std::size_t idx_i, idx_j;
+  int iter, idx_c;
   std::tuple<std::size_t, Key, Value> tmp_bucket;
 
-  for (unsigned int i = 0; i < partitions; i++)
+  for (int i = 0; i < partitions; i++)
     local_counters[i] = 0;
 
-  for (unsigned int i = begin; i < end; ++i) {
+  for (std::size_t i = begin; i < end; ++i) {
     h = std::get<0>(dst[i]);
     local_counters[h >> shift]++;
   }
-  for (unsigned int i = 0; i < partitions; i++) {
+  for (int i = 0; i < partitions; i++) {
     (*shared_counters)[i].fetch_add(local_counters[i],
                                     std::memory_order_relaxed);
   }
@@ -534,7 +528,7 @@ template<typename Key,
   if (barrier->wait()) {
     (*indexes)[0].first = 0;
     (*sort_indexes)[0].first = (*sort_indexes)[0].second = 0;
-    for (unsigned int i = 0; i < partitions - 1; i++) {
+    for (int i = 0; i < partitions - 1; i++) {
       (*indexes)[i].second =
        (*sort_indexes)[i+1].first =
        (*sort_indexes)[i+1].second = 
@@ -561,7 +555,7 @@ template<typename Key,
     idx_i = (*sort_indexes)[iter].first++;
 
     h = std::get<0>(dst[idx_i]);
-    idx_c = h >> shift;
+    idx_c = static_cast<int>(h >> shift);
     if (idx_c == iter) {
       idx_j = (*sort_indexes)[iter].second++;
       if (idx_i != idx_j) {
@@ -574,7 +568,7 @@ template<typename Key,
     (*locks)[iter].unlock();
     while (true) {
       h = std::get<0>(tmp_bucket);
-      idx_c = h >> shift;
+      idx_c = static_cast<int>(h >> shift);
       (*locks)[idx_c].lock();
       if ((*sort_indexes)[idx_c].first > (*sort_indexes)[idx_c].second) {
         // We have a blank spot to fill tmp_bucket in
@@ -594,7 +588,7 @@ template<typename Key,
 
 template <typename RandomAccessIterator>
 void radix_inplace_par(RandomAccessIterator dst,
-                       unsigned int input_num,
+                       std::size_t input_num,
                        int num_threads,
                        int partition_bits) {
   typedef typename std::tuple_element<1,
@@ -603,7 +597,7 @@ void radix_inplace_par(RandomAccessIterator dst,
     typename RandomAccessIterator::value_type>::type Value;
 
   int shift, partitions, thread_partition, new_mask_bits;
-  std::atomic_uint a_counter(0);
+  std::atomic_int a_counter(0);
   ThreadBarrier barrier(num_threads);
 
   partitions = 1 << partition_bits;
@@ -611,10 +605,10 @@ void radix_inplace_par(RandomAccessIterator dst,
 
   shift = 64 - partition_bits;
 
-  std::vector<std::atomic_ullong> shared_counters(partitions);
+  std::vector<std::atomic_size_t> shared_counters(partitions);
   std::vector<std::mutex> locks(partitions);
-  std::vector<std::pair<unsigned int, unsigned int>> indexes(partitions);
-  std::vector<std::pair<unsigned int, unsigned int>> sort_indexes(partitions);
+  std::vector<std::pair<std::size_t, std::size_t>> indexes(partitions);
+  std::vector<std::pair<std::size_t, std::size_t>> sort_indexes(partitions);
   std::vector<std::thread> threads(num_threads);
 
   for (int i = 0; i < num_threads-1; i++) {
@@ -652,7 +646,7 @@ void radix_inplace_par(RandomAccessIterator dst,
 
 template <typename RandomAccessIterator>
 void radix_inplace_par(RandomAccessIterator dst,
-                       unsigned int input_num,
+                       std::size_t input_num,
                        int num_threads) {
   int partition_bits;
   partition_bits = optimal_partition(input_num);
