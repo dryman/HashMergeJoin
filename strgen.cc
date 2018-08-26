@@ -46,7 +46,7 @@ create_strvec(const int number) {
 
   for (int i = 0; i < sqrt_num; i++) {
     for (int j = 0; j < sqrt_num; j++) {
-      if (pairs.size() == number) {
+      if (pairs.size() == static_cast<std::size_t>(number)) {
         //std::cout << "end of strgen\n";
         std::random_shuffle(pairs.begin(), pairs.end());
         return pairs;

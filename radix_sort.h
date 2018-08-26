@@ -71,8 +71,8 @@ template <typename Key,
   std::pair<Key, Value> tmp_bucket;
   Key h, mask;
   int partitions, sqrt_partitions, shift;
-  std::size_t idx_i, idx_j, idx_c, s_begin, s_end, iter;
-  int new_mask_bits;
+  std::size_t idx_i, idx_j, s_begin, s_end;
+  int new_mask_bits, iter, idx_c;
 
   partitions = 1 << partition_bits;
   sqrt_partitions = 1 << (partition_bits / 2);
@@ -89,7 +89,7 @@ template <typename Key,
     if (s_end - s_begin < 2)
       continue;
     // Partition too small, use insertion sort instead.
-    if (s_end - s_begin < sqrt_partitions) {
+    if (s_end - s_begin < static_cast<std::size_t>(sqrt_partitions)) {
       rs1_insertion_outer<RandomAccessIterator, Key>(dst, s_begin, s_end);
       continue;
     }
@@ -116,7 +116,7 @@ template <typename Key,
         continue;
       }
       h = std::get<0>(dst[idx_i]);
-      idx_c = (h & mask) >> shift;
+      idx_c = static_cast<int>((h & mask) >> shift);
       if (idx_c == iter) {
         indexes[iter][0]++;
         continue;
@@ -124,7 +124,7 @@ template <typename Key,
       tmp_bucket = std::move(dst[idx_i]);
       do {
         h = std::get<0>(tmp_bucket);
-        idx_c = (h & mask) >> shift;
+        idx_c = static_cast<int>((h & mask) >> shift);
         idx_j = indexes[idx_c][0]++;
         std::swap(dst[idx_j], tmp_bucket);
       } while (idx_j > idx_i);
@@ -154,8 +154,8 @@ template <typename Key,
                     std::atomic_int* super_counter) {
   std::pair<Key, Value> tmp_bucket;
   Key h, mask;
-  int s_idx, partitions, sqrt_partitions, shift, new_mask_bits, iter;
-  std::size_t idx_i, idx_j, idx_c, s_begin, s_end;
+  int s_idx, partitions, sqrt_partitions, shift, new_mask_bits, iter, idx_c;
+  std::size_t idx_i, idx_j, s_begin, s_end;
 
   partitions = 1 << partition_bits;
   sqrt_partitions = 1 << (partition_bits / 2);
@@ -178,7 +178,7 @@ template <typename Key,
       continue;
     }
     // Partition too small, use insertion sort instead.
-    if (s_end - s_begin < sqrt_partitions) {
+    if (s_end - s_begin < static_cast<std::size_t>(sqrt_partitions)) {
       rs1_insertion_outer<RandomAccessIterator, Key>(dst, s_begin, s_end);
       s_idx = super_counter->fetch_add(1, std::memory_order_relaxed);
       continue;
@@ -207,7 +207,7 @@ template <typename Key,
         continue;
       }
       h = std::get<0>(dst[idx_i]);
-      idx_c = (h & mask) >> shift;
+      idx_c = static_cast<int>((h & mask) >> shift);
       if (idx_c == iter) {
         indexes[iter][0]++;
         continue;
@@ -253,9 +253,9 @@ template<typename Key,
                   int shift) {
   Key h;
   std::size_t local_counters[partitions];
-  std::size_t idx_i, idx_j, idx_c;
+  std::size_t idx_i, idx_j;
   std::pair<Key, Value> tmp_bucket;
-  int iter;
+  int iter, idx_c;
 
   for (int i = 0; i < partitions; i++)
     local_counters[i] = 0;
@@ -299,7 +299,7 @@ template<typename Key,
     idx_i = (*sort_indexes)[iter].first++;
 
     h = std::get<0>(dst[idx_i]);
-    idx_c = h >> shift;
+    idx_c = static_cast<int>(h >> shift);
     if (idx_c == iter) {
       idx_j = (*sort_indexes)[iter].second++;
       if (idx_i != idx_j) {
@@ -311,7 +311,7 @@ template<typename Key,
     (*locks)[iter].unlock();
     while (true) {
       h = std::get<0>(tmp_bucket);
-      idx_c = h >> shift;
+      idx_c = static_cast<int>(h >> shift);
       (*locks)[idx_c].lock();
       if ((*sort_indexes)[idx_c].first > (*sort_indexes)[idx_c].second) {
         // We have a blank spot to fill tmp_bucket in

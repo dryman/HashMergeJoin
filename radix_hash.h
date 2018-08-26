@@ -45,7 +45,7 @@ optimal_partition(std::size_t input_num) {
     double bottom = floor(log_k_input);
     double dist = log_k_input - bottom < top - log_k_input ?
      log_k_input - bottom : top - log_k_input;
-    if (input_num < (1<<k)) {
+    if (input_num < (1ULL<<k)) {
       return k;
     }
     if (dist <= min_dist) {
