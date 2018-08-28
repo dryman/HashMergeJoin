@@ -2,8 +2,13 @@ AUTOMAKE_OPTIONS = subdir-objects
 
 ACLOCAL_AMFLAGS=-I m4
 #SUBDIRS = googletest
-TESTS = radix_hash_test strgen_test thread_barrier_test radix_sort_test
-check_PROGRAMS = radix_hash_test strgen_test thread_barrier_test radix_sort_test
+TESTS = radix_hash_test strgen_test thread_barrier_test radix_sort_test partitioned_hash_test
+check_PROGRAMS = radix_hash_test strgen_test thread_barrier_test radix_sort_test partitioned_hash_test
+
+partitioned_hash_test_SOURCES = partitioned_hash_test.cc partitioned_hash.h thread_barrier.h thread_barrier.cc
+partitioned_hash_test_CPPFLAGS = -isystem googletest/googletest/include
+partitioned_hash_test_CXXFLAGS = -std=c++11 -Wall @PTHREAD_CFLAGS@ -Wextra
+partitioned_hash_test_LDADD = googletest/googletest/lib/libgtest.la googletest/googletest/lib/libgtest_main.la @PTHREAD_LIBS@
 
 radix_hash_test_SOURCES = radix_hash_test.cc radix_hash.h \
                           thread_barrier.h thread_barrier.cc
