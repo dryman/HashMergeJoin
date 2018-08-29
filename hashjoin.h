@@ -60,7 +60,7 @@ class HashMergeJoin {
     r_size = std::distance(r_begin, r_end);
     s_size = std::distance(s_begin, s_end);
     _r_sorted = std::vector<std::tuple<std::size_t, Key, RValue>>(r_size);
-    _s_sorted = std::vector<std::tuple<std::size_t, Key, RValue>>(s_size);
+    _s_sorted = std::vector<std::tuple<std::size_t, Key, SValue>>(s_size);
 
     radix_hash::radix_non_inplace_par<Key, RValue>(r_begin, r_end, _r_sorted.begin(), num_threads);
 

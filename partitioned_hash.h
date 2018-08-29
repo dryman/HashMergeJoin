@@ -206,6 +206,50 @@ template<
   }
 }
 
+template<typename RIter, typename SIter>
+class PartitionedHash {
+  static_assert(std::is_same<
+                typename RIter::value_type::first_type,
+                typename SIter::value_type::first_type>::value,
+                "RIter and SIter key type must be the same");
+  static_assert(std::is_same<
+                typename RIter::difference_type,
+                typename SIter::difference_type>::value,
+                "RIter and SIter difference type must be the same");
+
+  typedef typename RIter::difference_type distance_type;
+  typedef typename RIter::value_type RItem;
+  typedef typename SIter::value_type SItem;
+  typedef typename RItem::first_type Key;
+  typedef typename RItem::second_type RValue;
+  typedef typename SItem::second_type SValue;
+
+  //protected:
+ public:
+  PartitionedHash() = default;
+  PartitionedHash(RIter r_begin, RIter r_end,
+                SIter s_begin, SIter s_end,
+                unsigned int num_threads = 1)  {
+    distance_type r_size, s_size;
+    r_size = std::distance(r_begin, r_end);
+    s_size = std::distance(s_begin, s_end);
+    _r_vectors = std::vector<std::vector<RItem>>(1024);
+    _s_tables = std::vector<std::unordered_map<Key, SValue>>(1024);
+
+    partition_only(r_begin, r_end, &_r_vectors, num_threads, 10);
+    partitioned_hash_table(s_begin, s_end, &_s_tables, num_threads, 10);
+  }
+
+  class iterator : std::iterator<std::input_iterator_tag,
+  std::tuple<Key*, RValue*, SValue*>> {
+
+  protected:
+    std::tuple<Key*, RValue*, SValue*> tmp_val;
+  };
+ private:
+  std::vector<std::vector<RItem>> _r_vectors;
+  std::vector<std::unordered_map<Key, SValue>> _s_tables;
+};
 
 } // namespace radix_hash
 
