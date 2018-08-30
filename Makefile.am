@@ -63,7 +63,7 @@ radix_sort_bench_CXXFLAGS = -std=c++11 -Wall @PTHREAD_CFLAGS@ @PAPI_CFLAGS@
 radix_sort_bench_LDADD = @PTHREAD_LIBS@ @PAPI_LIBS@
 radix_sort_bench_LDFLAGS = -lbenchmark -ltbb -ltbbmalloc
 
-hashjoin_bench_SOURCES = hashjoin_bench.cc strgen.cc thread_barrier.h thread_barrier.cc
+hashjoin_bench_SOURCES = hashjoin_bench.cc strgen.cc thread_barrier.h thread_barrier.cc partitioned_hash.h
 hashjoin_bench_CXXFLAGS = -std=c++11 @PTHREAD_CFLAGS@ @PAPI_CFLAGS@
 hashjoin_bench_LDADD = @PTHREAD_LIBS@ @PAPI_LIBS@
 hashjoin_bench_LDFLAGS = -lbenchmark

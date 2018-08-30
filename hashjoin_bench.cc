@@ -19,6 +19,7 @@
 #include <unordered_map>
 #include "radix_hash.h"
 #include "hashjoin.h"
+#include "partitioned_hash.h"
 #include "strgen.h"
 #include <assert.h>
 #include <sys/resource.h>
@@ -50,6 +51,52 @@ static void BM_hash_join_raw(benchmark::State& state) {
       benchmark::DoNotOptimize
         (sum += r_kv.second + s_map[r_kv.first]);
     }
+    ACCUMULATE_COUNTERS;
+  }
+  REPORT_COUNTERS(state);
+
+  getrusage(RUSAGE_SELF, &u_after);
+  state.counters["Minor"] = u_after.ru_minflt - u_before.ru_minflt;
+  state.counters["Major"] = u_after.ru_majflt - u_before.ru_majflt;
+  state.counters["Swap"] = u_after.ru_nswap - u_before.ru_nswap;
+  state.SetComplexityN(state.range(0)*2);
+}
+
+static void BM_partitioned_hash_join_raw(benchmark::State& state) {
+  int size = state.range(0);
+  auto r = ::create_strvec(size);
+  auto s = ::create_strvec(size);
+  unsigned int cores = std::thread::hardware_concurrency();
+  std::vector<std::vector<std::pair<std::string, uint64_t>>> r_vectors(1024);
+  std::vector<std::unordered_map<std::string, uint64_t>> s_tables(1024);
+
+  struct rusage u_before, u_after;
+  getrusage(RUSAGE_SELF, &u_before);
+
+  RESET_ACC_COUNTERS;
+  for (auto _ : state) {
+    state.PauseTiming();
+    std::cout << "begin clean\n";
+    r_vectors.clear();
+    s_tables.clear();
+    std::cout << "end clean\n";
+    r_vectors.reserve(1024);
+    s_tables.reserve(1024);
+    state.ResumeTiming();
+
+    START_COUNTERS;
+    std::cout << "begin buildng table\n";
+    radix_hash::partition_only(r.begin(), r.end(), &r_vectors, cores, 10);
+    radix_hash::partitioned_hash_table(s.begin(), s.end(), &s_tables, cores, 10);
+    std::cout << "end buildng table\n";
+    uint64_t sum = 0;
+
+    for (int i = 0; i < 1024; ++i) {
+      for (auto r_pair : r_vectors[i]) {
+        sum += r_pair.second + s_tables[i][r_pair.first];
+      }
+    }
+
     ACCUMULATE_COUNTERS;
   }
   REPORT_COUNTERS(state);
@@ -221,12 +268,17 @@ static void BM_HashMergeJoin2_1thread(benchmark::State& state) {
   state.SetComplexityN(state.range(0)*2);
 }
 
-BENCHMARK(BM_hash_join_raw)->RangeMultiplier(2)
+//BENCHMARK(BM_hash_join_raw)->RangeMultiplier(2)
+//->Range(1<<18, 1<<24)->Complexity(benchmark::oN)
+//->UseRealTime();
+BENCHMARK(BM_partitioned_hash_join_raw)->RangeMultiplier(2)
 ->Range(1<<18, 1<<24)->Complexity(benchmark::oN)
 ->UseRealTime();
 BENCHMARK(BM_HashMergeJoin)->RangeMultiplier(2)
 ->Range(1<<18, 1<<24)->Complexity(benchmark::oN)
 ->UseRealTime();
+
+/*
 BENCHMARK(BM_HashMergeJoin_1thread)->RangeMultiplier(2)
 ->Range(1<<18, 1<<24)->Complexity(benchmark::oN)
 ->UseRealTime();
@@ -236,5 +288,6 @@ BENCHMARK(BM_HashMergeJoin2)->RangeMultiplier(2)
 BENCHMARK(BM_HashMergeJoin2_1thread)->RangeMultiplier(2)
 ->Range(1<<18, 1<<24)->Complexity(benchmark::oN)
 ->UseRealTime();
+*/
 
 BENCHMARK_MAIN();

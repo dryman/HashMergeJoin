@@ -206,6 +206,7 @@ template<
   }
 }
 
+/*
 template<typename RIter, typename SIter>
 class PartitionedHash {
   static_assert(std::is_same<
@@ -250,6 +251,7 @@ class PartitionedHash {
   std::vector<std::vector<RItem>> _r_vectors;
   std::vector<std::unordered_map<Key, SValue>> _s_tables;
 };
+*/
 
 } // namespace radix_hash
 
