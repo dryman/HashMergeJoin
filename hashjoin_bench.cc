@@ -266,15 +266,31 @@ static void BM_HashMergeJoin2_1thread(benchmark::State& state) {
   state.SetComplexityN(state.range(0)*2);
 }
 
-BENCHMARK(BM_hash_join_raw)->RangeMultiplier(2)
-->Range(1<<18, 1<<24)->Complexity(benchmark::oN)
-->UseRealTime();
-BENCHMARK(BM_partitioned_hash_join_raw)->RangeMultiplier(2)
-->Range(1<<18, 1<<24)->Complexity(benchmark::oN)
-->UseRealTime();
-BENCHMARK(BM_HashMergeJoin)->RangeMultiplier(2)
-->Range(1<<18, 1<<24)->Complexity(benchmark::oN)
-->UseRealTime();
+static void RadixArguments(benchmark::internal::Benchmark* b) {
+  uint64_t i = 10*1000;
+  uint64_t max = 1000*1000*1000;
+  for (;i <= max; i*=10) {
+    b->Args({(int)i});
+    if (i <= max)
+      b->Args({(int)i*5});
+    else
+      return;
+  }
+}
+
+BENCHMARK(BM_hash_join_raw)->Apply(RadixArguments);
+BENCHMARK(BM_partitioned_hash_join_raw)->Apply(RadixArguments);
+BENCHMARK(BM_HashMergeJoin)->Apply(RadixArguments);
+
+// BENCHMARK(BM_hash_join_raw)->RangeMultiplier(2)
+// ->Range(1<<18, 1<<24)->Complexity(benchmark::oN)
+// ->UseRealTime();
+// BENCHMARK(BM_partitioned_hash_join_raw)->RangeMultiplier(2)
+// ->Range(1<<18, 1<<24)->Complexity(benchmark::oN)
+// ->UseRealTime();
+// BENCHMARK(BM_HashMergeJoin)->RangeMultiplier(2)
+// ->Range(1<<18, 1<<24)->Complexity(benchmark::oN)
+// ->UseRealTime();
 
 /*
 BENCHMARK(BM_HashMergeJoin_1thread)->RangeMultiplier(2)
