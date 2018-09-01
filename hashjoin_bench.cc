@@ -64,8 +64,8 @@ static void BM_hash_join_raw(benchmark::State& state) {
 
 static void BM_partitioned_hash_join_raw(benchmark::State& state) {
   int size = state.range(0);
-  auto r = ::create_strvec(size);
-  auto s = ::create_strvec(size);
+  const auto r = ::create_strvec(size);
+  const auto s = ::create_strvec(size);
   unsigned int cores = std::thread::hardware_concurrency();
   std::vector<std::vector<std::pair<std::string, uint64_t>>> r_vectors(1024);
   std::vector<std::unordered_map<std::string, uint64_t>> s_tables(1024);
@@ -76,24 +76,22 @@ static void BM_partitioned_hash_join_raw(benchmark::State& state) {
   RESET_ACC_COUNTERS;
   for (auto _ : state) {
     state.PauseTiming();
-    std::cout << "begin clean\n";
-    r_vectors.clear();
-    s_tables.clear();
-    std::cout << "end clean\n";
-    r_vectors.reserve(1024);
-    s_tables.reserve(1024);
+    for (auto v : r_vectors) {
+      v.clear();
+    }
+    for (auto v : s_tables) {
+      v.clear();
+    }
     state.ResumeTiming();
 
     START_COUNTERS;
-    std::cout << "begin buildng table\n";
     radix_hash::partition_only(r.begin(), r.end(), &r_vectors, cores, 10);
     radix_hash::partitioned_hash_table(s.begin(), s.end(), &s_tables, cores, 10);
-    std::cout << "end buildng table\n";
     uint64_t sum = 0;
 
     for (int i = 0; i < 1024; ++i) {
       for (auto r_pair : r_vectors[i]) {
-        sum += r_pair.second + s_tables[i][r_pair.first];
+        benchmark::DoNotOptimize(sum += r_pair.second + s_tables[i][r_pair.first]);
       }
     }
 
@@ -268,9 +266,9 @@ static void BM_HashMergeJoin2_1thread(benchmark::State& state) {
   state.SetComplexityN(state.range(0)*2);
 }
 
-//BENCHMARK(BM_hash_join_raw)->RangeMultiplier(2)
-//->Range(1<<18, 1<<24)->Complexity(benchmark::oN)
-//->UseRealTime();
+BENCHMARK(BM_hash_join_raw)->RangeMultiplier(2)
+->Range(1<<18, 1<<24)->Complexity(benchmark::oN)
+->UseRealTime();
 BENCHMARK(BM_partitioned_hash_join_raw)->RangeMultiplier(2)
 ->Range(1<<18, 1<<24)->Complexity(benchmark::oN)
 ->UseRealTime();

@@ -24,6 +24,7 @@
 #include <functional>
 #include <sys/mman.h>
 #include <memory>
+#include <mutex>
 #include <assert.h>
 #include <atomic>
 #include <thread>
@@ -42,12 +43,14 @@ template<
       BidirectionalIterator begin,
                              BidirectionalIterator end,
                              std::vector<std::vector<ItemType>>* dst,
+                             std::vector<std::mutex>* dst_locks,
                              int thread_id,
                              int thread_num,
                              ThreadBarrier* barrier,
                              std::vector<std::size_t>* shared_counters,
                              int partitions,
                              int shift) {
+  typedef typename std::tuple_element<1,ItemType>::type Value;
   std::size_t h;
   std::size_t partition_sum;
 
@@ -71,6 +74,7 @@ template<
 
   for (auto iter = begin; iter != end; ++iter) {
     h = Hash{}(std::get<0>(*iter));
+    std::lock_guard<std::mutex> guard((*dst_locks)[h>>shift]);
     (*dst)[h >> shift].push_back(*iter);
   }
 }
@@ -98,19 +102,20 @@ template <
   shift = 64 - partition_bits;
   std::vector<std::size_t> shared_counters(partitions*num_threads);
   std::vector<std::thread> threads(num_threads);
+  std::vector<std::mutex> dst_locks(partitions);
 
   for (int i = 0; i < num_threads-1; i++) {
     threads[i] = std::thread(partitioned_only_worker<BidirectionalIterator,
                              ItemType, Key, Hash>,
                              begin + i * thread_partition,
                              begin + (i+1) * thread_partition,
-                             dst, i, num_threads,
+                             dst, &dst_locks, i, num_threads,
                              &barrier, &shared_counters,
                              partitions, shift);
   }
 
   partitioned_only_worker(begin+(num_threads-1)*thread_partition,
-                          end, dst, num_threads-1, num_threads,
+                          end, dst, &dst_locks, num_threads-1, num_threads,
                           &barrier, &shared_counters,
                           partitions, shift);
   for (int i = 0; i < num_threads-1; i++) {
@@ -128,6 +133,7 @@ template<
   void partitioned_table_worker(BidirectionalIterator begin,
                              BidirectionalIterator end,
                              std::vector<std::unordered_map<Key,Value>>* tables,
+                             std::vector<std::mutex>* dst_locks,
                              int thread_id,
                              int thread_num,
                              ThreadBarrier* barrier,
@@ -159,6 +165,7 @@ template<
 
   for (auto iter = begin; iter != end; ++iter) {
     h = Hash{}(std::get<0>(*iter));
+    std::lock_guard<std::mutex> guard((*dst_locks)[h>>shift]);
     (*tables)[h >> shift].insert(*iter);
   }
 }
@@ -186,19 +193,20 @@ template<
   shift = 64 - partition_bits;
   std::vector<std::size_t> shared_counters(partitions*num_threads);
   std::vector<std::thread> threads(num_threads);
+  std::vector<std::mutex> dst_locks(partitions);
 
   for (int i = 0; i < num_threads-1; i++) {
     threads[i] = std::thread(partitioned_table_worker<BidirectionalIterator,
                              ItemType, Key, Value, Hash>,
                              begin + i * thread_partition,
                              begin + (i+1) * thread_partition,
-                             tables, i, num_threads,
+                             tables, &dst_locks, i, num_threads,
                              &barrier, &shared_counters,
                              partitions, shift);
   }
 
   partitioned_table_worker(begin+(num_threads-1)*thread_partition,
-                          end, tables, num_threads-1, num_threads,
+                          end, tables, &dst_locks, num_threads-1, num_threads,
                           &barrier, &shared_counters,
                           partitions, shift);
   for (int i = 0; i < num_threads-1; i++) {
